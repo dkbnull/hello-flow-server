@@ -1,0 +1,30 @@
+package cn.wbnull.helloflow.data.repository;
+
+import cn.wbnull.helloflow.data.entity.HfPosition;
+import cn.wbnull.helloflow.data.mapper.HfPositionMapper;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Repository;
+
+/**
+ * 岗位数据访问层
+ *
+ * @author null
+ * @date 2026-05-27
+ */
+@Repository
+@RequiredArgsConstructor
+public class HfPositionRepository {
+
+    private final HfPositionMapper hfPositionMapper;
+
+    public HfPosition selectById(Long id) {
+        return hfPositionMapper.selectById(id);
+    }
+
+    public HfPosition selectByCode(String code) {
+        LambdaQueryWrapper<HfPosition> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(HfPosition::getCode, code);
+        return hfPositionMapper.selectOne(wrapper);
+    }
+}

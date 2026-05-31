@@ -1,0 +1,249 @@
+package cn.wbnull.helloflow.app.service.impl;
+
+import cn.wbnull.helloflow.app.dto.project.ProjectCreateRequest;
+import cn.wbnull.helloflow.app.dto.project.ProjectQueryRequest;
+import cn.wbnull.helloflow.app.dto.project.ProjectUpdateRequest;
+import cn.wbnull.helloflow.app.dto.project.ProjectVO;
+import cn.wbnull.helloflow.app.service.HfProjectService;
+import cn.wbnull.helloflow.common.exception.BusinessException;
+import cn.wbnull.helloflow.common.model.ResultCode;
+import cn.wbnull.helloflow.common.util.BeanCopyUtils;
+import cn.wbnull.helloflow.data.entity.HfPosition;
+import cn.wbnull.helloflow.data.entity.HfProject;
+import cn.wbnull.helloflow.data.entity.HfProjectMember;
+import cn.wbnull.helloflow.data.entity.SysUser;
+import cn.wbnull.helloflow.data.repository.HfPositionRepository;
+import cn.wbnull.helloflow.data.repository.HfProjectMemberRepository;
+import cn.wbnull.helloflow.data.repository.HfProjectRepository;
+import cn.wbnull.helloflow.data.repository.SysUserRepository;
+
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+/**
+ * 项目服务实现
+ *
+ * @author null
+ * @date 2026-05-26
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class HfProjectServiceImpl implements HfProjectService {
+
+    private final HfProjectRepository hfProjectRepository;
+    private final HfProjectMemberRepository hfProjectMemberRepository;
+    private final SysUserRepository sysUserRepository;
+    private final HfPositionRepository hfPositionRepository;
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public ProjectVO createProject(ProjectCreateRequest request, Long userId) {
+        validateCodeUnique(request.getCode(), null);
+        validateNameUnique(request.getName(), null);
+        validatePositionMatch(request.getPmId(), "PM");
+        validatePositionMatch(request.getDevLeadId(), "DEV");
+        validatePositionMatch(request.getTestLeadId(), "QA");
+
+        HfProject project = new HfProject();
+        BeanCopyUtils.copyNonNullProperties(request, project);
+        project.setStatus(1);
+        project.setCreatedBy(userId);
+        hfProjectRepository.insert(project);
+
+        addMemberInternal(project.getId(), request.getPmId());
+        addMemberInternal(project.getId(), request.getDevLeadId());
+        addMemberInternal(project.getId(), request.getTestLeadId());
+        addMemberInternal(project.getId(), userId);
+
+        log.info("创建项目：{}", project.getName());
+        return toProjectVO(project);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public ProjectVO updateProject(Long id, ProjectUpdateRequest request) {
+        HfProject project = hfProjectRepository.selectById(id);
+        if (project == null) {
+            throw new BusinessException(ResultCode.PROJECT_NOT_FOUND);
+        }
+
+        validateCodeUnique(request.getCode(), id);
+        validateNameUnique(request.getName(), id);
+        if (request.getPmId() != null) {
+            validatePositionMatch(request.getPmId(), "PM");
+            addMemberInternal(project.getId(), request.getPmId());
+            project.setPmId(request.getPmId());
+        }
+        if (request.getDevLeadId() != null) {
+            validatePositionMatch(request.getDevLeadId(), "DEV");
+            addMemberInternal(project.getId(), request.getDevLeadId());
+            project.setDevLeadId(request.getDevLeadId());
+        }
+        if (request.getTestLeadId() != null) {
+            validatePositionMatch(request.getTestLeadId(), "QA");
+            addMemberInternal(project.getId(), request.getTestLeadId());
+            project.setTestLeadId(request.getTestLeadId());
+        }
+        BeanCopyUtils.copyNonNullProperties(request, project, "pmId", "devLeadId", "testLeadId");
+        hfProjectRepository.updateById(project);
+        log.info("更新项目：id={}", id);
+        return toProjectVO(project);
+    }
+
+    @Override
+    public ProjectVO getProject(Long id) {
+        HfProject project = hfProjectRepository.selectById(id);
+        if (project == null) {
+            throw new BusinessException(ResultCode.PROJECT_NOT_FOUND);
+        }
+        return toProjectVO(project);
+    }
+
+    @Override
+    public Page<ProjectVO> listProjects(ProjectQueryRequest query) {
+        List<Long> projectIds = null;
+        if (!query.isAdmin()) {
+            List<HfProjectMember> memberships = hfProjectMemberRepository.selectByUserId(query.getUserId());
+            projectIds = memberships.stream().map(HfProjectMember::getProjectId).collect(Collectors.toList());
+            if (projectIds.isEmpty()) {
+                Page<ProjectVO> emptyPage = new Page<>(query.getPage(), query.getPageSize(), 0);
+                emptyPage.setRecords(List.of());
+                return emptyPage;
+            }
+        }
+        Page<HfProject> pageResult = hfProjectRepository.selectPageByCondition(
+                new Page<>(query.getPage(), query.getPageSize()), query.getKeyword(), query.getStatus(), projectIds);
+        Page<ProjectVO> voPage = new Page<>(pageResult.getCurrent(), pageResult.getSize(), pageResult.getTotal());
+        voPage.setRecords(pageResult.getRecords().stream().map(this::toProjectVO).collect(Collectors.toList()));
+        return voPage;
+    }
+
+    @Override
+    public List<ProjectVO.MemberVO> listMembers(Long projectId, String positionCode) {
+        HfPosition filterPosition = null;
+        if (positionCode != null && !positionCode.isEmpty()) {
+            filterPosition = hfPositionRepository.selectByCode(positionCode);
+            if (filterPosition == null) {
+                return List.of();
+            }
+        }
+        List<HfProjectMember> members = hfProjectMemberRepository.selectByProjectId(projectId);
+        List<ProjectVO.MemberVO> result = new ArrayList<>();
+        for (HfProjectMember member : members) {
+            SysUser user = sysUserRepository.selectById(member.getUserId());
+            if (user == null) {
+                continue;
+            }
+            HfPosition userPosition = null;
+            if (user.getPositionId() != null) {
+                userPosition = hfPositionRepository.selectById(user.getPositionId());
+            }
+            if (filterPosition != null) {
+                if (userPosition == null || !filterPosition.getId().equals(userPosition.getId())) {
+                    continue;
+                }
+            }
+            ProjectVO.MemberVO vo = new ProjectVO.MemberVO();
+            vo.setUserId(user.getId());
+            vo.setUsername(user.getUsername());
+            vo.setNickname(user.getNickname());
+            vo.setJoinedAt(member.getJoinedAt());
+            if (userPosition != null) {
+                vo.setPositionCode(userPosition.getCode());
+                vo.setPositionName(userPosition.getName());
+            }
+            result.add(vo);
+        }
+        return result;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void addMember(Long projectId, Long userId) {
+        addMemberInternal(projectId, userId);
+        log.info("添加项目成员：projectId={}, userId={}", projectId, userId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void removeMember(Long projectId, Long userId) {
+        hfProjectMemberRepository.deleteByProjectIdAndUserId(projectId, userId);
+        log.info("移除项目成员：projectId={}, userId={}", projectId, userId);
+    }
+
+    private void validateCodeUnique(String code, Long excludeId) {
+        HfProject existing = hfProjectRepository.selectByCode(code);
+        if (existing != null && !existing.getId().equals(excludeId)) {
+            throw new BusinessException(ResultCode.PROJECT_CODE_EXISTS);
+        }
+    }
+
+    private void validateNameUnique(String name, Long excludeId) {
+        HfProject existing = hfProjectRepository.selectByName(name);
+        if (existing != null && !existing.getId().equals(excludeId)) {
+            throw new BusinessException(ResultCode.PROJECT_NAME_EXISTS);
+        }
+    }
+
+    private void validatePositionMatch(Long userId, String expectedPositionCode) {
+        if (userId == null) {
+            return;
+        }
+        SysUser user = sysUserRepository.selectById(userId);
+        if (user == null) {
+            throw new BusinessException(ResultCode.USER_NOT_FOUND);
+        }
+        if (user.getPositionId() == null) {
+            throw new BusinessException(ResultCode.POSITION_MISMATCH);
+        }
+        HfPosition position = hfPositionRepository.selectById(user.getPositionId());
+        if (position == null || !expectedPositionCode.equals(position.getCode())) {
+            throw new BusinessException(ResultCode.POSITION_MISMATCH);
+        }
+    }
+
+    private void addMemberInternal(Long projectId, Long userId) {
+        if (userId == null) {
+            return;
+        }
+        HfProjectMember existing = hfProjectMemberRepository.selectByProjectIdAndUserId(projectId, userId);
+        if (existing == null) {
+            HfProjectMember member = new HfProjectMember();
+            member.setProjectId(projectId);
+            member.setUserId(userId);
+            hfProjectMemberRepository.insert(member);
+        }
+    }
+
+    private ProjectVO toProjectVO(HfProject project) {
+        ProjectVO vo = new ProjectVO();
+        BeanCopyUtils.copyNonNullProperties(project, vo);
+        if (project.getPmId() != null) {
+            SysUser pm = sysUserRepository.selectById(project.getPmId());
+            if (pm != null) {
+                vo.setPmName(pm.getNickname() != null ? pm.getNickname() : pm.getUsername());
+            }
+        }
+        if (project.getDevLeadId() != null) {
+            SysUser devLead = sysUserRepository.selectById(project.getDevLeadId());
+            if (devLead != null) {
+                vo.setDevLeadName(devLead.getNickname() != null ? devLead.getNickname() : devLead.getUsername());
+            }
+        }
+        if (project.getTestLeadId() != null) {
+            SysUser testLead = sysUserRepository.selectById(project.getTestLeadId());
+            if (testLead != null) {
+                vo.setTestLeadName(testLead.getNickname() != null ? testLead.getNickname() : testLead.getUsername());
+            }
+        }
+        return vo;
+    }
+}
