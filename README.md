@@ -1,14 +1,27 @@
+<p align="center">
+  <img src="https://github.com/dkbnull/hello-flow-web/src/assets/logo.png" alt="HelloFlow" width="120">
+</p>
+
 <h1 align="center">Hello Flow</h1>
 
-<p align="center"><strong>软件研发项目管理工具</strong></p>
+<p align="center"><strong>软件研发项目管理工具 - 服务端</strong></p>
 
 <p align="center">
   <a href="https://github.com/dkbnull/hello-flow-server">
-    <img src="https://img.shields.io/badge/GitHub-仓库-blue?logo=github">
+    <img src="https://img.shields.io/badge/GitHub-服务端-blue?logo=github">
   </a>
   <a href="https://gitee.com/dkbnull/hello-flow-server">
-    <img src="https://img.shields.io/badge/Gitee-仓库-red?logo=gitee">
+    <img src="https://img.shields.io/badge/Gitee-服务端-red?logo=gitee">
   </a>
+  <a href="https://github.com/dkbnull/hello-flow-web">
+    <img src="https://img.shields.io/badge/GitHub-WEB 端-blue?logo=github">
+  </a>
+  <a href="https://gitee.com/dkbnull/hello-flow-web">
+    <img src="https://img.shields.io/badge/Gitee-WEB 端-red?logo=gitee">
+  </a>
+</p>
+
+<p align="center">
   <img src="https://img.shields.io/badge/JDK-17-green?logo=java">
   <img src="https://img.shields.io/badge/Spring%20Boot-3.5.14-brightgreen?logo=springboot">
   <img src="https://img.shields.io/badge/MySQL-8.0+-orange?logo=mysql">
@@ -19,7 +32,9 @@
 
 ## 项目简介
 
-Hello Flow 是一款面向软件研发团队的项目管理工具，支持项目全生命周期管理，涵盖需求、开发、评审、测试全流程。
+Hello Flow 是一款面向软件研发团队的项目管理工具，支持需求管理、任务流转、缺陷跟踪、迭代管理，提供看板视图和统计报表。
+
+本项目为 **服务端**，提供 RESTful API 接口。Web 前端项目请访问 [hello-flow-web](https://github.com/dkbnull/hello-flow-web)。
 
 ## 技术栈
 
