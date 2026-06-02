@@ -15,32 +15,32 @@ public interface HfNotificationService {
     /**
      * 获取通知列表
      */
-    Page<NotificationVO> listNotifications(Long userId, Integer isRead, Integer page, Integer pageSize);
+    Page<NotificationVO> listNotifications(Integer isRead, Integer page, Integer pageSize);
 
     /**
      * 获取未读数量
      */
-    Long getUnreadCount(Long userId);
+    Long getUnreadCount();
 
     /**
      * 标记已读
      */
-    void markRead(Long id, Long userId);
+    void markRead(Long id);
 
     /**
      * 全部已读
      */
-    void markAllRead(Long userId);
+    void markAllRead();
 
     /**
      * 获取通知设置
      */
-    NotificationVO.SettingVO getSetting(Long userId);
+    NotificationVO.SettingVO getSetting();
 
     /**
      * 更新通知设置
      */
-    void updateSetting(Long userId, NotificationSettingRequest request);
+    void updateSetting(NotificationSettingRequest request);
 
     /**
      * 发送通知

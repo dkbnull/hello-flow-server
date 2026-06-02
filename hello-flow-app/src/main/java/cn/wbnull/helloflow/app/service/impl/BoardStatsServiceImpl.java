@@ -83,14 +83,14 @@ public class BoardStatsServiceImpl implements BoardStatsService {
             vo.setUserId(entry.getKey());
             vo.setTotalTasks((long) entry.getValue().size());
             vo.setCompletedTasks(entry.getValue().stream()
-                    .filter(t -> t.getStatus() == TaskStatusEnum.DONE.getCode()
-                            || t.getStatus() == TaskStatusEnum.CLOSED.getCode())
+                    .filter(t -> TaskStatusEnum.DONE.matches(t.getStatus())
+                            || TaskStatusEnum.CLOSED.matches(t.getStatus()))
                     .count());
             vo.setInProgressTasks(entry.getValue().stream()
-                    .filter(t -> t.getStatus() == TaskStatusEnum.IN_PROGRESS.getCode())
+                    .filter(t -> TaskStatusEnum.IN_PROGRESS.matches(t.getStatus()))
                     .count());
             vo.setTodoTasks(entry.getValue().stream()
-                    .filter(t -> t.getStatus() == TaskStatusEnum.TODO.getCode())
+                    .filter(t -> TaskStatusEnum.TODO.matches(t.getStatus()))
                     .count());
             return vo;
         }).collect(Collectors.toList());
@@ -103,13 +103,13 @@ public class BoardStatsServiceImpl implements BoardStatsService {
         DefectStatsVO stats = new DefectStatsVO();
         stats.setTotalDefects((long) defects.size());
         stats.setOpenDefects(defects.stream()
-                .filter(t -> t.getStatus() != TaskStatusEnum.DONE.getCode()
-                        && t.getStatus() != TaskStatusEnum.CLOSED.getCode()
-                        && t.getStatus() != TaskStatusEnum.CANCELLED.getCode())
+                .filter(t -> !TaskStatusEnum.DONE.matches(t.getStatus())
+                        && !TaskStatusEnum.CLOSED.matches(t.getStatus())
+                        && !TaskStatusEnum.CANCELLED.matches(t.getStatus()))
                 .count());
         stats.setClosedDefects(defects.stream()
-                .filter(t -> t.getStatus() == TaskStatusEnum.DONE.getCode()
-                        || t.getStatus() == TaskStatusEnum.CLOSED.getCode())
+                .filter(t -> TaskStatusEnum.DONE.matches(t.getStatus())
+                        || TaskStatusEnum.CLOSED.matches(t.getStatus()))
                 .count());
         stats.setFixRate(defects.isEmpty() ? 0.0 : (double) stats.getClosedDefects() / defects.size() * 100);
 

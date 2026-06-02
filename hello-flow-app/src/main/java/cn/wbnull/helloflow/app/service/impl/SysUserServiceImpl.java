@@ -13,6 +13,7 @@ import cn.wbnull.helloflow.data.repository.HfPositionRepository;
 import cn.wbnull.helloflow.data.repository.SysRoleRepository;
 import cn.wbnull.helloflow.data.repository.SysUserRepository;
 import cn.wbnull.helloflow.data.repository.SysUserRoleRepository;
+import cn.wbnull.helloflow.security.util.SecurityUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -101,7 +102,8 @@ public class SysUserServiceImpl implements SysUserService {
     }
 
     @Override
-    public UserVO getCurrentUser(Long userId) {
+    public UserVO getCurrentUser() {
+        Long userId = SecurityUtils.getCurrentUserId();
         SysUser user = sysUserRepository.selectById(userId);
         if (user == null) {
             throw new BusinessException(ResultCode.USER_NOT_FOUND);
@@ -110,7 +112,8 @@ public class SysUserServiceImpl implements SysUserService {
     }
 
     @Override
-    public UserVO updateProfile(Long userId, UserProfileUpdateRequest request) {
+    public UserVO updateProfile(UserProfileUpdateRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
         SysUser user = sysUserRepository.selectById(userId);
         if (user == null) {
             throw new BusinessException(ResultCode.USER_NOT_FOUND);

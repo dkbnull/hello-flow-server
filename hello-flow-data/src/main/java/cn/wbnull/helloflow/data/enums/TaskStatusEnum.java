@@ -34,4 +34,8 @@ public enum TaskStatusEnum {
         }
         throw new BusinessException(ResultCode.PARAM_VALIDATION_FAILED, "无效的任务状态：" + code);
     }
+
+    public boolean matches(Integer statusCode) {
+        return statusCode != null && this.code == statusCode;
+    }
 }

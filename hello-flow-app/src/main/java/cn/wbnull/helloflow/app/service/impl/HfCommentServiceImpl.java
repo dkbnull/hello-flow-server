@@ -8,6 +8,7 @@ import cn.wbnull.helloflow.data.entity.HfComment;
 import cn.wbnull.helloflow.data.entity.SysUser;
 import cn.wbnull.helloflow.data.repository.HfCommentRepository;
 import cn.wbnull.helloflow.data.repository.SysUserRepository;
+import cn.wbnull.helloflow.security.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -36,7 +37,8 @@ public class HfCommentServiceImpl implements HfCommentService {
     }
 
     @Override
-    public CommentVO addComment(Long taskId, CommentCreateRequest request, Long userId) {
+    public CommentVO addComment(Long taskId, CommentCreateRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
         HfComment comment = new HfComment();
         BeanCopyUtils.copyNonNullProperties(request, comment);
         comment.setTaskId(taskId);

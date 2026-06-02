@@ -23,32 +23,32 @@ import java.util.List;
 @RequestMapping("/api/filters")
 @RequiredArgsConstructor
 @Tag(name = "过滤器管理", description = "过滤器CRUD")
-public class FilterController extends BaseController {
+public class FilterController {
 
     private final HfFilterService hfFilterService;
 
     @GetMapping
     @Operation(summary = "过滤器列表")
     public Result<List<FilterVO>> listFilters() {
-        return Result.success(hfFilterService.listFilters(getCurrentUserId()));
+        return Result.success(hfFilterService.listFilters());
     }
 
     @PostMapping
     @Operation(summary = "创建过滤器")
     public Result<FilterVO> createFilter(@Valid @RequestBody FilterCreateRequest request) {
-        return Result.success(hfFilterService.createFilter(request, getCurrentUserId()));
+        return Result.success(hfFilterService.createFilter(request));
     }
 
     @PutMapping("/{id}")
     @Operation(summary = "更新过滤器")
-    public Result<FilterVO> updateFilter(@PathVariable Long id, @RequestBody FilterUpdateRequest request) {
-        return Result.success(hfFilterService.updateFilter(id, request, getCurrentUserId()));
+    public Result<FilterVO> updateFilter(@PathVariable Long id, @Valid @RequestBody FilterUpdateRequest request) {
+        return Result.success(hfFilterService.updateFilter(id, request));
     }
 
     @DeleteMapping("/{id}")
     @Operation(summary = "删除过滤器")
     public Result<Void> deleteFilter(@PathVariable Long id) {
-        hfFilterService.deleteFilter(id, getCurrentUserId());
+        hfFilterService.deleteFilter(id);
         return Result.success();
     }
 }

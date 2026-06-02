@@ -2,6 +2,8 @@ package cn.wbnull.helloflow.app.dto.task;
 
 import lombok.Data;
 
+import java.time.LocalDate;
+
 /**
  * 任务更新请求
  *
@@ -19,11 +21,11 @@ public class TaskUpdateRequest {
 
     private Integer priority;
 
-    private String dueDate;
+    private LocalDate dueDate;
 
-    private String planStartDate;
+    private LocalDate planStartDate;
 
-    private String planEndDate;
+    private LocalDate planEndDate;
 
     private Long sprintId;
 }

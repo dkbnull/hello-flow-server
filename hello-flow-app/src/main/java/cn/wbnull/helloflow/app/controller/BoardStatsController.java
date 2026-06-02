@@ -24,7 +24,7 @@ import java.util.List;
 @RequestMapping("/api")
 @RequiredArgsConstructor
 @Tag(name = "看板与统计", description = "看板数据、项目统计、燃尽图")
-public class BoardStatsController extends BaseController {
+public class BoardStatsController {
 
     private final BoardStatsService boardStatsService;
 

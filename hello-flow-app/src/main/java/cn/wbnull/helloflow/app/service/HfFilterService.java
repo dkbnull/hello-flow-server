@@ -17,20 +17,20 @@ public interface HfFilterService {
     /**
      * 获取过滤器列表
      */
-    List<FilterVO> listFilters(Long userId);
+    List<FilterVO> listFilters();
 
     /**
      * 创建过滤器
      */
-    FilterVO createFilter(FilterCreateRequest request, Long userId);
+    FilterVO createFilter(FilterCreateRequest request);
 
     /**
      * 更新过滤器
      */
-    FilterVO updateFilter(Long id, FilterUpdateRequest request, Long userId);
+    FilterVO updateFilter(Long id, FilterUpdateRequest request);
 
     /**
      * 删除过滤器
      */
-    void deleteFilter(Long id, Long userId);
+    void deleteFilter(Long id);
 }

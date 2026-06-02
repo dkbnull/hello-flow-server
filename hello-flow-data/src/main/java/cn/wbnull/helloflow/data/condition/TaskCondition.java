@@ -2,6 +2,9 @@ package cn.wbnull.helloflow.data.condition;
 
 import lombok.Data;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
 /**
  * 任务查询条件
  *
@@ -27,13 +30,13 @@ public class TaskCondition {
 
     private Integer isDelayed;
 
-    private String dueDateStart;
+    private LocalDate dueDateStart;
 
-    private String dueDateEnd;
+    private LocalDate dueDateEnd;
 
-    private String createdAtStart;
+    private LocalDateTime createdAtStart;
 
-    private String createdAtEnd;
+    private LocalDateTime createdAtEnd;
 
     private String keyword;
 

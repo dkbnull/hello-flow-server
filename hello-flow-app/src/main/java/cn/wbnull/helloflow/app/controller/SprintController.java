@@ -23,7 +23,7 @@ import java.util.List;
 @RequestMapping("/api")
 @RequiredArgsConstructor
 @Tag(name = "Sprint管理", description = "Sprint CRUD、开始/完成Sprint")
-public class SprintController extends BaseController {
+public class SprintController {
 
     private final HfSprintService hfSprintService;
 
@@ -37,12 +37,12 @@ public class SprintController extends BaseController {
     @Operation(summary = "创建Sprint")
     public Result<SprintVO> createSprint(@PathVariable Long projectId,
                                          @Valid @RequestBody SprintCreateRequest request) {
-        return Result.success(hfSprintService.createSprint(projectId, request, getCurrentUserId()));
+        return Result.success(hfSprintService.createSprint(projectId, request));
     }
 
     @PutMapping("/sprints/{id}")
     @Operation(summary = "更新Sprint")
-    public Result<SprintVO> updateSprint(@PathVariable Long id, @RequestBody SprintUpdateRequest request) {
+    public Result<SprintVO> updateSprint(@PathVariable Long id, @Valid @RequestBody SprintUpdateRequest request) {
         return Result.success(hfSprintService.updateSprint(id, request));
     }
 

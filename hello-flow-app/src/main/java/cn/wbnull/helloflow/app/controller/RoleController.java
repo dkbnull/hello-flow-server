@@ -44,7 +44,7 @@ public class RoleController {
     @PutMapping("/{id}")
     @Operation(summary = "更新角色")
     @PreAuthorize("hasRole('ADMIN')")
-    public Result<SysRole> updateRole(@PathVariable Long id, @RequestBody RoleUpdateRequest request) {
+    public Result<SysRole> updateRole(@PathVariable Long id, @Valid @RequestBody RoleUpdateRequest request) {
         return Result.success(sysRoleService.updateRole(id, request));
     }
 }

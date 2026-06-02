@@ -21,5 +21,5 @@ public interface HfCommentService {
     /**
      * 添加评论
      */
-    CommentVO addComment(Long taskId, CommentCreateRequest request, Long userId);
+    CommentVO addComment(Long taskId, CommentCreateRequest request);
 }

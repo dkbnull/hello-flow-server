@@ -12,7 +12,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,20 +26,13 @@ import java.util.List;
 @RequestMapping("/api/projects")
 @RequiredArgsConstructor
 @Tag(name = "项目管理", description = "项目CRUD、项目成员管理")
-public class ProjectController extends BaseController {
+public class ProjectController {
 
     private final HfProjectService hfProjectService;
-
-    @InitBinder
-    public void initBinder(WebDataBinder binder) {
-        binder.setDisallowedFields("userId", "isAdmin");
-    }
 
     @GetMapping
     @Operation(summary = "项目列表")
     public Result<Page<ProjectVO>> listProjects(ProjectQueryRequest query) {
-        query.setUserId(getCurrentUserId());
-        query.setAdmin(isAdmin());
         return Result.success(hfProjectService.listProjects(query));
     }
 
@@ -48,7 +40,7 @@ public class ProjectController extends BaseController {
     @Operation(summary = "创建项目")
     @PreAuthorize("hasRole('ADMIN')")
     public Result<ProjectVO> createProject(@Valid @RequestBody ProjectCreateRequest request) {
-        return Result.success(hfProjectService.createProject(request, getCurrentUserId()));
+        return Result.success(hfProjectService.createProject(request));
     }
 
     @GetMapping("/{id}")
@@ -59,7 +51,7 @@ public class ProjectController extends BaseController {
 
     @PutMapping("/{id}")
     @Operation(summary = "更新项目")
-    public Result<ProjectVO> updateProject(@PathVariable Long id, @RequestBody ProjectUpdateRequest request) {
+    public Result<ProjectVO> updateProject(@PathVariable Long id, @Valid @RequestBody ProjectUpdateRequest request) {
         return Result.success(hfProjectService.updateProject(id, request));
     }
 

@@ -36,12 +36,12 @@ public interface SysUserService {
     /**
      * 获取当前用户信息
      */
-    UserVO getCurrentUser(Long userId);
+    UserVO getCurrentUser();
 
     /**
      * 更新个人信息
      */
-    UserVO updateProfile(Long userId, UserProfileUpdateRequest request);
+    UserVO updateProfile(UserProfileUpdateRequest request);
 
     /**
      * 获取用户角色编码列表

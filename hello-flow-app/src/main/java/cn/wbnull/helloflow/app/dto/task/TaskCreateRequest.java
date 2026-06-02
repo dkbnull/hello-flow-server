@@ -3,6 +3,8 @@ package cn.wbnull.helloflow.app.dto.task;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
+import java.time.LocalDate;
+
 /**
  * 任务创建请求
  *
@@ -27,7 +29,7 @@ public class TaskCreateRequest {
 
     private Long testerId;
 
-    private String dueDate;
+    private LocalDate dueDate;
 
     private Long sprintId;
 

@@ -1,5 +1,6 @@
 package cn.wbnull.helloflow.app.service.impl;
 
+import cn.wbnull.helloflow.app.dto.mapstruct.TaskMapper;
 import cn.wbnull.helloflow.app.dto.task.*;
 import cn.wbnull.helloflow.app.service.HfNotificationService;
 import cn.wbnull.helloflow.app.service.HfTaskHistoryService;
@@ -13,6 +14,7 @@ import cn.wbnull.helloflow.data.enums.NotificationTypeEnum;
 import cn.wbnull.helloflow.data.enums.TaskActionEnum;
 import cn.wbnull.helloflow.data.enums.TaskStatusEnum;
 import cn.wbnull.helloflow.data.repository.*;
+import cn.wbnull.helloflow.security.util.SecurityUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,7 +23,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * 任务服务实现
@@ -42,10 +48,12 @@ public class HfTaskServiceImpl implements HfTaskService {
     private final SysUserRepository sysUserRepository;
     private final HfTaskHistoryService taskHistoryService;
     private final HfNotificationService notificationService;
+    private final TaskMapper taskMapper;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public TaskVO createTask(Long projectId, TaskCreateRequest request, Long userId) {
+    public TaskVO createTask(Long projectId, TaskCreateRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
         HfProject project = hfProjectRepository.selectById(projectId);
         if (project == null) {
             throw new BusinessException(ResultCode.PROJECT_NOT_FOUND);
@@ -85,7 +93,7 @@ public class HfTaskServiceImpl implements HfTaskService {
             task.setTesterId(request.getTesterId());
         }
         if (request.getDueDate() != null) {
-            task.setDueDate(LocalDate.parse(request.getDueDate()));
+            task.setDueDate(request.getDueDate());
         }
         hfTaskRepository.insert(task);
         // 记录创建历史
@@ -110,7 +118,8 @@ public class HfTaskServiceImpl implements HfTaskService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public TaskVO updateTask(Long id, TaskUpdateRequest request, Long userId) {
+    public TaskVO updateTask(Long id, TaskUpdateRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
         HfTask task = getTaskOrThrow(id);
         if (request.getTitle() != null) {
             task.setTitle(request.getTitle());
@@ -129,13 +138,13 @@ public class HfTaskServiceImpl implements HfTaskService {
                     .field("priority").oldValue(String.valueOf(oldPriority)).newValue(String.valueOf(request.getPriority())).build());
         }
         if (request.getDueDate() != null) {
-            task.setDueDate(LocalDate.parse(request.getDueDate()));
+            task.setDueDate(request.getDueDate());
         }
         if (request.getPlanStartDate() != null) {
-            task.setPlanStartDate(LocalDate.parse(request.getPlanStartDate()));
+            task.setPlanStartDate(request.getPlanStartDate());
         }
         if (request.getPlanEndDate() != null) {
-            task.setPlanEndDate(LocalDate.parse(request.getPlanEndDate()));
+            task.setPlanEndDate(request.getPlanEndDate());
         }
         if (request.getSprintId() != null) {
             task.setSprintId(request.getSprintId());
@@ -149,7 +158,8 @@ public class HfTaskServiceImpl implements HfTaskService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void deleteTask(Long id, Long userId) {
+    public void deleteTask(Long id) {
+        Long userId = SecurityUtils.getCurrentUserId();
         HfTask task = getTaskOrThrow(id);
         if (!task.getCreatedBy().equals(userId)) {
             throw new BusinessException(ResultCode.FORBIDDEN);
@@ -177,13 +187,14 @@ public class HfTaskServiceImpl implements HfTaskService {
         Page<HfTask> pageResult = hfTaskRepository.selectPageByCondition(
                 new Page<>(query.getPage(), query.getPageSize()), condition);
         Page<TaskVO> voPage = new Page<>(pageResult.getCurrent(), pageResult.getSize(), pageResult.getTotal());
-        voPage.setRecords(pageResult.getRecords().stream().map(this::toTaskVO).collect(Collectors.toList()));
+        voPage.setRecords(toTaskVOList(pageResult.getRecords()));
         return voPage;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void assignTask(Long id, TaskAssignRequest request, Long operatorId) {
+    public void assignTask(Long id, TaskAssignRequest request) {
+        Long operatorId = SecurityUtils.getCurrentUserId();
         HfTask task = getTaskOrThrow(id);
         Long oldAssignee = task.getAssigneeId();
         task.setAssigneeId(request.getAssigneeId());
@@ -202,9 +213,10 @@ public class HfTaskServiceImpl implements HfTaskService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void startTask(Long id, Long userId) {
+    public void startTask(Long id) {
+        Long userId = SecurityUtils.getCurrentUserId();
         HfTask task = getTaskOrThrow(id);
-        if (task.getStatus() != TaskStatusEnum.TODO.getCode()) {
+        if (!TaskStatusEnum.TODO.matches(task.getStatus())) {
             throw new BusinessException(ResultCode.TASK_STATUS_TRANSITION_INVALID);
         }
         Integer oldStatus = task.getStatus();
@@ -219,9 +231,10 @@ public class HfTaskServiceImpl implements HfTaskService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void completeDev(Long id, Long userId) {
+    public void completeDev(Long id) {
+        Long userId = SecurityUtils.getCurrentUserId();
         HfTask task = getTaskOrThrow(id);
-        if (task.getStatus() != TaskStatusEnum.IN_PROGRESS.getCode()) {
+        if (!TaskStatusEnum.IN_PROGRESS.matches(task.getStatus())) {
             throw new BusinessException(ResultCode.TASK_STATUS_TRANSITION_INVALID);
         }
         Integer oldStatus = task.getStatus();
@@ -242,9 +255,10 @@ public class HfTaskServiceImpl implements HfTaskService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void reviewPass(Long id, Long userId) {
+    public void reviewPass(Long id) {
+        Long userId = SecurityUtils.getCurrentUserId();
         HfTask task = getTaskOrThrow(id);
-        if (task.getStatus() != TaskStatusEnum.IN_REVIEW.getCode()) {
+        if (!TaskStatusEnum.IN_REVIEW.matches(task.getStatus())) {
             throw new BusinessException(ResultCode.TASK_STATUS_TRANSITION_INVALID);
         }
         validateReviewPermission(task, userId);
@@ -273,9 +287,10 @@ public class HfTaskServiceImpl implements HfTaskService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void reviewReject(Long id, Long userId) {
+    public void reviewReject(Long id) {
+        Long userId = SecurityUtils.getCurrentUserId();
         HfTask task = getTaskOrThrow(id);
-        if (task.getStatus() != TaskStatusEnum.IN_REVIEW.getCode()) {
+        if (!TaskStatusEnum.IN_REVIEW.matches(task.getStatus())) {
             throw new BusinessException(ResultCode.TASK_STATUS_TRANSITION_INVALID);
         }
         validateReviewPermission(task, userId);
@@ -297,9 +312,10 @@ public class HfTaskServiceImpl implements HfTaskService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void testPass(Long id, Long userId) {
+    public void testPass(Long id) {
+        Long userId = SecurityUtils.getCurrentUserId();
         HfTask task = getTaskOrThrow(id);
-        if (task.getStatus() != TaskStatusEnum.IN_TEST.getCode()) {
+        if (!TaskStatusEnum.IN_TEST.matches(task.getStatus())) {
             throw new BusinessException(ResultCode.TASK_STATUS_TRANSITION_INVALID);
         }
         Integer oldStatus = task.getStatus();
@@ -322,9 +338,10 @@ public class HfTaskServiceImpl implements HfTaskService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void testReject(Long id, Long userId) {
+    public void testReject(Long id) {
+        Long userId = SecurityUtils.getCurrentUserId();
         HfTask task = getTaskOrThrow(id);
-        if (task.getStatus() != TaskStatusEnum.IN_TEST.getCode()) {
+        if (!TaskStatusEnum.IN_TEST.matches(task.getStatus())) {
             throw new BusinessException(ResultCode.TASK_STATUS_TRANSITION_INVALID);
         }
         Integer oldStatus = task.getStatus();
@@ -344,9 +361,10 @@ public class HfTaskServiceImpl implements HfTaskService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void reopenTask(Long id, Long userId) {
+    public void reopenTask(Long id) {
+        Long userId = SecurityUtils.getCurrentUserId();
         HfTask task = getTaskOrThrow(id);
-        if (task.getStatus() != TaskStatusEnum.DONE.getCode() && task.getStatus() != TaskStatusEnum.CLOSED.getCode()) {
+        if (!TaskStatusEnum.DONE.matches(task.getStatus()) && !TaskStatusEnum.CLOSED.matches(task.getStatus())) {
             throw new BusinessException(ResultCode.TASK_STATUS_TRANSITION_INVALID);
         }
         Integer oldStatus = task.getStatus();
@@ -368,9 +386,10 @@ public class HfTaskServiceImpl implements HfTaskService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void closeTask(Long id, Long userId) {
+    public void closeTask(Long id) {
+        Long userId = SecurityUtils.getCurrentUserId();
         HfTask task = getTaskOrThrow(id);
-        if (task.getStatus() != TaskStatusEnum.DONE.getCode()) {
+        if (!TaskStatusEnum.DONE.matches(task.getStatus())) {
             throw new BusinessException(ResultCode.TASK_STATUS_TRANSITION_INVALID);
         }
         Integer oldStatus = task.getStatus();
@@ -385,9 +404,10 @@ public class HfTaskServiceImpl implements HfTaskService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void cancelTask(Long id, TaskCancelRequest request, Long userId) {
+    public void cancelTask(Long id, TaskCancelRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
         HfTask task = getTaskOrThrow(id);
-        if (task.getStatus() != TaskStatusEnum.TODO.getCode() && task.getStatus() != TaskStatusEnum.IN_PROGRESS.getCode()) {
+        if (!TaskStatusEnum.TODO.matches(task.getStatus()) && !TaskStatusEnum.IN_PROGRESS.matches(task.getStatus())) {
             throw new BusinessException(ResultCode.TASK_STATUS_TRANSITION_INVALID);
         }
         Integer oldStatus = task.getStatus();
@@ -402,9 +422,10 @@ public class HfTaskServiceImpl implements HfTaskService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void delayTask(Long id, TaskDelayRequest request, Long userId) {
+    public void delayTask(Long id, TaskDelayRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
         HfTask task = getTaskOrThrow(id);
-        if (task.getStatus() != TaskStatusEnum.IN_PROGRESS.getCode()) {
+        if (!TaskStatusEnum.IN_PROGRESS.matches(task.getStatus())) {
             throw new BusinessException(ResultCode.TASK_STATUS_TRANSITION_INVALID);
         }
         task.setIsDelayed(1);
@@ -424,13 +445,13 @@ public class HfTaskServiceImpl implements HfTaskService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public TaskVO createSubTask(Long parentId, TaskCreateRequest request, Long userId) {
+    public TaskVO createSubTask(Long parentId, TaskCreateRequest request) {
         HfTask parent = hfTaskRepository.selectById(parentId);
         if (parent == null) {
             throw new BusinessException(ResultCode.TASK_NOT_FOUND);
         }
         request.setParentId(parentId);
-        return createTask(parent.getProjectId(), request, userId);
+        return createTask(parent.getProjectId(), request);
     }
 
     @Override
@@ -508,14 +529,14 @@ public class HfTaskServiceImpl implements HfTaskService {
         }
         List<HfTask> subTasks = hfTaskRepository.selectByParentId(parentId);
         boolean allDone = subTasks.stream().allMatch(
-                t -> t.getStatus() == TaskStatusEnum.DONE.getCode()
-                        || t.getStatus() == TaskStatusEnum.CLOSED.getCode()
-                        || t.getStatus() == TaskStatusEnum.CANCELLED.getCode());
+                t -> TaskStatusEnum.DONE.matches(t.getStatus())
+                        || TaskStatusEnum.CLOSED.matches(t.getStatus())
+                        || TaskStatusEnum.CANCELLED.matches(t.getStatus()));
         if (allDone && !subTasks.isEmpty()) {
-            if (parent.getStatus() == TaskStatusEnum.TODO.getCode()) {
+            if (TaskStatusEnum.TODO.matches(parent.getStatus())) {
                 parent.setStatus(TaskStatusEnum.DONE.getCode());
                 hfTaskRepository.updateById(parent);
-            } else if (parent.getStatus() == TaskStatusEnum.IN_PROGRESS.getCode()) {
+            } else if (TaskStatusEnum.IN_PROGRESS.matches(parent.getStatus())) {
                 parent.setStatus(TaskStatusEnum.IN_REVIEW.getCode());
                 hfTaskRepository.updateById(parent);
             }
@@ -523,9 +544,29 @@ public class HfTaskServiceImpl implements HfTaskService {
     }
 
     private TaskVO toTaskVO(HfTask task) {
-        TaskVO vo = new TaskVO();
-        BeanCopyUtils.copyNonNullProperties(task, vo);
-        // 填充用户名
+        TaskVO vo = taskMapper.toTaskVO(task);
+        fillUserNames(vo, task);
+        return vo;
+    }
+
+    private List<TaskVO> toTaskVOList(List<HfTask> tasks) {
+        if (tasks == null || tasks.isEmpty()) {
+            return List.of();
+        }
+        Set<Long> userIds = tasks.stream()
+                .flatMap(t -> Stream.of(t.getAssigneeId(), t.getReporterId(), t.getDeveloperId(), t.getTesterId()))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, SysUser> userMap = sysUserRepository.selectByIds(userIds)
+                .stream().collect(Collectors.toMap(SysUser::getId, u -> u));
+        return tasks.stream().map(task -> {
+            TaskVO vo = taskMapper.toTaskVO(task);
+            fillUserNamesFromMap(vo, task, userMap);
+            return vo;
+        }).collect(Collectors.toList());
+    }
+
+    private void fillUserNames(TaskVO vo, HfTask task) {
         if (task.getAssigneeId() != null) {
             SysUser assignee = sysUserRepository.selectById(task.getAssigneeId());
             if (assignee != null) {
@@ -550,7 +591,33 @@ public class HfTaskServiceImpl implements HfTaskService {
                 vo.setTesterName(tester.getNickname() != null ? tester.getNickname() : tester.getUsername());
             }
         }
-        return vo;
+    }
+
+    private void fillUserNamesFromMap(TaskVO vo, HfTask task, Map<Long, SysUser> userMap) {
+        if (task.getAssigneeId() != null) {
+            SysUser assignee = userMap.get(task.getAssigneeId());
+            if (assignee != null) {
+                vo.setAssigneeName(assignee.getNickname() != null ? assignee.getNickname() : assignee.getUsername());
+            }
+        }
+        if (task.getReporterId() != null) {
+            SysUser reporter = userMap.get(task.getReporterId());
+            if (reporter != null) {
+                vo.setReporterName(reporter.getNickname() != null ? reporter.getNickname() : reporter.getUsername());
+            }
+        }
+        if (task.getDeveloperId() != null) {
+            SysUser developer = userMap.get(task.getDeveloperId());
+            if (developer != null) {
+                vo.setDeveloperName(developer.getNickname() != null ? developer.getNickname() : developer.getUsername());
+            }
+        }
+        if (task.getTesterId() != null) {
+            SysUser tester = userMap.get(task.getTesterId());
+            if (tester != null) {
+                vo.setTesterName(tester.getNickname() != null ? tester.getNickname() : tester.getUsername());
+            }
+        }
     }
 
     private HfTask getTaskOrThrow(Long id) {
@@ -580,15 +647,25 @@ public class HfTaskServiceImpl implements HfTaskService {
             if (project == null) {
                 throw new BusinessException(ResultCode.CANNOT_REVIEW_OWN_TASK);
             }
-            long devCount = hfProjectMemberRepository.selectByProjectId(project.getId()).stream()
-                    .filter(m -> {
-                        SysUser member = sysUserRepository.selectById(m.getUserId());
-                        if (member == null || member.getPositionId() == null) {
-                            return false;
-                        }
-                        HfPosition memberPosition = hfPositionRepository.selectById(member.getPositionId());
-                        return memberPosition != null && "DEV".equals(memberPosition.getCode());
-                    }).count();
+            List<HfProjectMember> members = hfProjectMemberRepository.selectByProjectId(project.getId());
+            Set<Long> memberUserIds = members.stream().map(HfProjectMember::getUserId).collect(Collectors.toSet());
+            Map<Long, SysUser> memberUserMap = sysUserRepository.selectByIds(memberUserIds)
+                    .stream().collect(Collectors.toMap(SysUser::getId, u -> u));
+            Set<Long> memberPositionIds = memberUserMap.values().stream()
+                    .map(SysUser::getPositionId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+            Map<Long, HfPosition> memberPositionMap = memberPositionIds.isEmpty() ? Map.of()
+                    : hfPositionRepository.selectByIds(memberPositionIds).stream()
+                    .collect(Collectors.toMap(HfPosition::getId, p -> p));
+            long devCount = members.stream().filter(m -> {
+                SysUser member = memberUserMap.get(m.getUserId());
+                if (member == null || member.getPositionId() == null) {
+                    return false;
+                }
+                HfPosition memberPosition = memberPositionMap.get(member.getPositionId());
+                return memberPosition != null && "DEV".equals(memberPosition.getCode());
+            }).count();
             if (devCount > 1) {
                 throw new BusinessException(ResultCode.CANNOT_REVIEW_OWN_TASK);
             }

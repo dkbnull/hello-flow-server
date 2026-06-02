@@ -9,6 +9,7 @@ import cn.wbnull.helloflow.common.model.ResultCode;
 import cn.wbnull.helloflow.common.util.BeanCopyUtils;
 import cn.wbnull.helloflow.data.entity.HfFilter;
 import cn.wbnull.helloflow.data.repository.HfFilterRepository;
+import cn.wbnull.helloflow.security.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,13 +31,15 @@ public class HfFilterServiceImpl implements HfFilterService {
     private final HfFilterRepository hfFilterRepository;
 
     @Override
-    public List<FilterVO> listFilters(Long userId) {
+    public List<FilterVO> listFilters() {
+        Long userId = SecurityUtils.getCurrentUserId();
         List<HfFilter> filters = hfFilterRepository.selectByUserId(userId);
         return filters.stream().map(this::toFilterVO).collect(Collectors.toList());
     }
 
     @Override
-    public FilterVO createFilter(FilterCreateRequest request, Long userId) {
+    public FilterVO createFilter(FilterCreateRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
         HfFilter filter = new HfFilter();
         BeanCopyUtils.copyNonNullProperties(request, filter);
         filter.setUserId(userId);
@@ -49,7 +52,8 @@ public class HfFilterServiceImpl implements HfFilterService {
     }
 
     @Override
-    public FilterVO updateFilter(Long id, FilterUpdateRequest request, Long userId) {
+    public FilterVO updateFilter(Long id, FilterUpdateRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
         HfFilter filter = hfFilterRepository.selectById(id);
         if (filter == null || !filter.getUserId().equals(userId)) {
             throw new BusinessException(ResultCode.NOT_FOUND);
@@ -61,7 +65,8 @@ public class HfFilterServiceImpl implements HfFilterService {
     }
 
     @Override
-    public void deleteFilter(Long id, Long userId) {
+    public void deleteFilter(Long id) {
+        Long userId = SecurityUtils.getCurrentUserId();
         HfFilter filter = hfFilterRepository.selectById(id);
         if (filter == null || !filter.getUserId().equals(userId)) {
             throw new BusinessException(ResultCode.NOT_FOUND);

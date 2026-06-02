@@ -1,5 +1,6 @@
 package cn.wbnull.helloflow.app.service.impl;
 
+import cn.wbnull.helloflow.app.dto.mapstruct.ProjectMapper;
 import cn.wbnull.helloflow.app.dto.project.ProjectCreateRequest;
 import cn.wbnull.helloflow.app.dto.project.ProjectQueryRequest;
 import cn.wbnull.helloflow.app.dto.project.ProjectUpdateRequest;
@@ -16,6 +17,7 @@ import cn.wbnull.helloflow.data.repository.HfPositionRepository;
 import cn.wbnull.helloflow.data.repository.HfProjectMemberRepository;
 import cn.wbnull.helloflow.data.repository.HfProjectRepository;
 import cn.wbnull.helloflow.data.repository.SysUserRepository;
+import cn.wbnull.helloflow.security.util.SecurityUtils;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +27,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -42,10 +47,12 @@ public class HfProjectServiceImpl implements HfProjectService {
     private final HfProjectMemberRepository hfProjectMemberRepository;
     private final SysUserRepository sysUserRepository;
     private final HfPositionRepository hfPositionRepository;
+    private final ProjectMapper projectMapper;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public ProjectVO createProject(ProjectCreateRequest request, Long userId) {
+    public ProjectVO createProject(ProjectCreateRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
         validateCodeUnique(request.getCode(), null);
         validateNameUnique(request.getName(), null);
         validatePositionMatch(request.getPmId(), "PM");
@@ -109,6 +116,8 @@ public class HfProjectServiceImpl implements HfProjectService {
 
     @Override
     public Page<ProjectVO> listProjects(ProjectQueryRequest query) {
+        query.setUserId(SecurityUtils.getCurrentUserId());
+        query.setAdmin(SecurityUtils.isAdmin());
         List<Long> projectIds = null;
         if (!query.isAdmin()) {
             List<HfProjectMember> memberships = hfProjectMemberRepository.selectByUserId(query.getUserId());
@@ -136,16 +145,26 @@ public class HfProjectServiceImpl implements HfProjectService {
             }
         }
         List<HfProjectMember> members = hfProjectMemberRepository.selectByProjectId(projectId);
+        if (members.isEmpty()) {
+            return List.of();
+        }
+        Set<Long> userIds = members.stream().map(HfProjectMember::getUserId).collect(Collectors.toSet());
+        Map<Long, SysUser> userMap = sysUserRepository.selectByIds(userIds)
+                .stream().collect(Collectors.toMap(SysUser::getId, u -> u));
+        Set<Long> positionIds = userMap.values().stream()
+                .map(SysUser::getPositionId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, HfPosition> positionMap = positionIds.isEmpty() ? Map.of()
+                : hfPositionRepository.selectByIds(positionIds).stream().collect(Collectors.toMap(HfPosition::getId, p -> p));
+
         List<ProjectVO.MemberVO> result = new ArrayList<>();
         for (HfProjectMember member : members) {
-            SysUser user = sysUserRepository.selectById(member.getUserId());
+            SysUser user = userMap.get(member.getUserId());
             if (user == null) {
                 continue;
             }
-            HfPosition userPosition = null;
-            if (user.getPositionId() != null) {
-                userPosition = hfPositionRepository.selectById(user.getPositionId());
-            }
+            HfPosition userPosition = user.getPositionId() != null ? positionMap.get(user.getPositionId()) : null;
             if (filterPosition != null) {
                 if (userPosition == null || !filterPosition.getId().equals(userPosition.getId())) {
                     continue;
@@ -224,8 +243,7 @@ public class HfProjectServiceImpl implements HfProjectService {
     }
 
     private ProjectVO toProjectVO(HfProject project) {
-        ProjectVO vo = new ProjectVO();
-        BeanCopyUtils.copyNonNullProperties(project, vo);
+        ProjectVO vo = projectMapper.toProjectVO(project);
         if (project.getPmId() != null) {
             SysUser pm = sysUserRepository.selectById(project.getPmId());
             if (pm != null) {

@@ -17,17 +17,17 @@ public interface HfTaskService {
     /**
      * 创建任务
      */
-    TaskVO createTask(Long projectId, TaskCreateRequest request, Long userId);
+    TaskVO createTask(Long projectId, TaskCreateRequest request);
 
     /**
      * 更新任务
      */
-    TaskVO updateTask(Long id, TaskUpdateRequest request, Long userId);
+    TaskVO updateTask(Long id, TaskUpdateRequest request);
 
     /**
      * 删除任务（逻辑删除）
      */
-    void deleteTask(Long id, Long userId);
+    void deleteTask(Long id);
 
     /**
      * 获取任务详情
@@ -42,57 +42,57 @@ public interface HfTaskService {
     /**
      * 分配任务
      */
-    void assignTask(Long id, TaskAssignRequest request, Long operatorId);
+    void assignTask(Long id, TaskAssignRequest request);
 
     /**
      * 开始开发
      */
-    void startTask(Long id, Long userId);
+    void startTask(Long id);
 
     /**
      * 开发完成
      */
-    void completeDev(Long id, Long userId);
+    void completeDev(Long id);
 
     /**
      * 评审通过
      */
-    void reviewPass(Long id, Long userId);
+    void reviewPass(Long id);
 
     /**
      * 评审不通过
      */
-    void reviewReject(Long id, Long userId);
+    void reviewReject(Long id);
 
     /**
      * 测试通过
      */
-    void testPass(Long id, Long userId);
+    void testPass(Long id);
 
     /**
      * 测试不通过
      */
-    void testReject(Long id, Long userId);
+    void testReject(Long id);
 
     /**
      * 重新打开
      */
-    void reopenTask(Long id, Long userId);
+    void reopenTask(Long id);
 
     /**
      * 关闭任务
      */
-    void closeTask(Long id, Long userId);
+    void closeTask(Long id);
 
     /**
      * 取消任务
      */
-    void cancelTask(Long id, TaskCancelRequest request, Long userId);
+    void cancelTask(Long id, TaskCancelRequest request);
 
     /**
      * 标记延期
      */
-    void delayTask(Long id, TaskDelayRequest request, Long userId);
+    void delayTask(Long id, TaskDelayRequest request);
 
     /**
      * 获取子任务列表
@@ -102,7 +102,7 @@ public interface HfTaskService {
     /**
      * 创建子任务
      */
-    TaskVO createSubTask(Long parentId, TaskCreateRequest request, Long userId);
+    TaskVO createSubTask(Long parentId, TaskCreateRequest request);
 
     /**
      * 获取任务关联列表

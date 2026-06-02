@@ -21,13 +21,12 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
 @Tag(name = "用户管理", description = "用户CRUD、个人信息管理")
-public class UserController extends BaseController {
+public class UserController {
 
     private final SysUserService sysUserService;
 
     @GetMapping
     @Operation(summary = "用户列表")
-//    @PreAuthorize("hasRole('ADMIN')")
     public Result<Page<UserVO>> listUsers(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Integer status,
@@ -47,14 +46,14 @@ public class UserController extends BaseController {
     @PutMapping("/{id}")
     @Operation(summary = "更新用户")
     @PreAuthorize("hasRole('ADMIN')")
-    public Result<UserVO> updateUser(@PathVariable Long id, @RequestBody UserUpdateRequest request) {
+    public Result<UserVO> updateUser(@PathVariable Long id, @Valid @RequestBody UserUpdateRequest request) {
         return Result.success(sysUserService.updateUser(id, request));
     }
 
     @PutMapping("/{id}/status")
     @Operation(summary = "启用/禁用用户")
     @PreAuthorize("hasRole('ADMIN')")
-    public Result<Void> updateUserStatus(@PathVariable Long id, @RequestBody UserStatusRequest request) {
+    public Result<Void> updateUserStatus(@PathVariable Long id, @Valid @RequestBody UserStatusRequest request) {
         sysUserService.updateUserStatus(id, request);
         return Result.success();
     }
@@ -62,12 +61,12 @@ public class UserController extends BaseController {
     @GetMapping("/me")
     @Operation(summary = "当前用户信息")
     public Result<UserVO> getCurrentUser() {
-        return Result.success(sysUserService.getCurrentUser(getCurrentUserId()));
+        return Result.success(sysUserService.getCurrentUser());
     }
 
     @PutMapping("/me")
     @Operation(summary = "更新个人信息")
-    public Result<UserVO> updateProfile(@RequestBody UserProfileUpdateRequest request) {
-        return Result.success(sysUserService.updateProfile(getCurrentUserId(), request));
+    public Result<UserVO> updateProfile(@Valid @RequestBody UserProfileUpdateRequest request) {
+        return Result.success(sysUserService.updateProfile(request));
     }
 }

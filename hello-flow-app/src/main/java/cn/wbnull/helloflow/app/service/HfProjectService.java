@@ -19,7 +19,7 @@ public interface HfProjectService {
     /**
      * 创建项目
      */
-    ProjectVO createProject(ProjectCreateRequest request, Long userId);
+    ProjectVO createProject(ProjectCreateRequest request);
 
     /**
      * 更新项目

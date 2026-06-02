@@ -9,6 +9,7 @@ import cn.wbnull.helloflow.common.model.ResultCode;
 import cn.wbnull.helloflow.common.util.BeanCopyUtils;
 import cn.wbnull.helloflow.data.entity.HfSprint;
 import cn.wbnull.helloflow.data.repository.HfSprintRepository;
+import cn.wbnull.helloflow.security.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -31,7 +32,8 @@ public class HfSprintServiceImpl implements HfSprintService {
     private final HfSprintRepository hfSprintRepository;
 
     @Override
-    public SprintVO createSprint(Long projectId, SprintCreateRequest request, Long userId) {
+    public SprintVO createSprint(Long projectId, SprintCreateRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
         HfSprint sprint = new HfSprint();
         BeanCopyUtils.copyNonNullProperties(request, sprint, "startDate", "endDate");
         sprint.setProjectId(projectId);

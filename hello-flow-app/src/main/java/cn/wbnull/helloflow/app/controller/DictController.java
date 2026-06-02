@@ -44,7 +44,7 @@ public class DictController {
     @PutMapping("/{id}")
     @Operation(summary = "更新字典类型")
     @PreAuthorize("hasRole('ADMIN')")
-    public Result<DictTypeVO> updateDictType(@PathVariable Long id, @RequestBody DictTypeUpdateRequest request) {
+    public Result<DictTypeVO> updateDictType(@PathVariable Long id, @Valid @RequestBody DictTypeUpdateRequest request) {
         return Result.success(sysDictService.updateDictType(id, request));
     }
 
@@ -67,7 +67,7 @@ public class DictController {
     @PutMapping("/data/{id}")
     @Operation(summary = "更新字典数据")
     @PreAuthorize("hasRole('ADMIN')")
-    public Result<DictDataVO> updateDictData(@PathVariable Long id, @RequestBody DictDataUpdateRequest request) {
+    public Result<DictDataVO> updateDictData(@PathVariable Long id, @Valid @RequestBody DictDataUpdateRequest request) {
         return Result.success(sysDictService.updateDictData(id, request));
     }
 }
