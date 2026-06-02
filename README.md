@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://github.com/dkbnull/hello-flow-web/src/assets/logo.png" alt="HelloFlow" width="120">
+  <img src="hello-flow-app/src/main/resources/static/logo.png" alt="HelloFlow" width="120">
 </p>
 
 <h1 align="center">Hello Flow</h1>
