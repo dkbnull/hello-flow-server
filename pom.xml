@@ -31,6 +31,8 @@
         <jjwt.version>0.12.6</jjwt.version>
         <mapstruct.version>1.6.3</mapstruct.version>
         <springdoc.version>2.8.8</springdoc.version>
+        <flyway.version>11.8.0</flyway.version>
+        <flyway-mysql.version>11.8.0</flyway-mysql.version>
     </properties>
 
     <dependencyManagement>
@@ -101,6 +103,18 @@
                 <groupId>org.springdoc</groupId>
                 <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
                 <version>${springdoc.version}</version>
+            </dependency>
+
+            <!-- Flyway -->
+            <dependency>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-core</artifactId>
+                <version>${flyway.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-mysql</artifactId>
+                <version>${flyway-mysql.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
