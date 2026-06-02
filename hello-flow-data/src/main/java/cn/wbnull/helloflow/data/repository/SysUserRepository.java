@@ -7,6 +7,9 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
+import java.util.List;
+
 /**
  * 用户数据访问层
  *
@@ -21,6 +24,13 @@ public class SysUserRepository {
 
     public SysUser selectById(Long id) {
         return sysUserMapper.selectById(id);
+    }
+
+    public List<SysUser> selectByIds(Collection<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        return sysUserMapper.selectByIds(ids);
     }
 
     public SysUser selectByUsername(String username) {

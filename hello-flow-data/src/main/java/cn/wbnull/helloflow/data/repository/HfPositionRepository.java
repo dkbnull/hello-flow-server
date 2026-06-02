@@ -6,6 +6,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
+import java.util.List;
+
 /**
  * 岗位数据访问层
  *
@@ -20,6 +23,13 @@ public class HfPositionRepository {
 
     public HfPosition selectById(Long id) {
         return hfPositionMapper.selectById(id);
+    }
+
+    public List<HfPosition> selectByIds(Collection<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        return hfPositionMapper.selectByIds(ids);
     }
 
     public HfPosition selectByCode(String code) {

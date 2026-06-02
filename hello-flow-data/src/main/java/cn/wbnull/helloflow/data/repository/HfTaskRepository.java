@@ -84,42 +84,8 @@ public class HfTaskRepository {
             wrapper.eq(HfTask::getProjectId, condition.getProjectId());
         }
         wrapper.isNull(HfTask::getParentId);
-        if (condition.getStatus() != null) {
-            wrapper.eq(HfTask::getStatus, condition.getStatus());
-        }
-        if (condition.getType() != null) {
-            wrapper.eq(HfTask::getType, condition.getType());
-        }
-        if (condition.getPriority() != null) {
-            wrapper.eq(HfTask::getPriority, condition.getPriority());
-        }
-        if (condition.getAssigneeId() != null) {
-            wrapper.eq(HfTask::getAssigneeId, condition.getAssigneeId());
-        }
-        if (condition.getReporterId() != null) {
-            wrapper.eq(HfTask::getReporterId, condition.getReporterId());
-        }
-        if (condition.getSprintId() != null) {
-            wrapper.eq(HfTask::getSprintId, condition.getSprintId());
-        }
-        if (condition.getIsDelayed() != null) {
-            wrapper.eq(HfTask::getIsDelayed, condition.getIsDelayed());
-        }
-        if (condition.getDueDateStart() != null) {
-            wrapper.ge(HfTask::getDueDate, java.time.LocalDate.parse(condition.getDueDateStart()));
-        }
-        if (condition.getDueDateEnd() != null) {
-            wrapper.le(HfTask::getDueDate, java.time.LocalDate.parse(condition.getDueDateEnd()));
-        }
-        if (condition.getCreatedAtStart() != null) {
-            wrapper.ge(HfTask::getCreatedAt, java.time.LocalDateTime.parse(condition.getCreatedAtStart() + "T00:00:00"));
-        }
-        if (condition.getCreatedAtEnd() != null) {
-            wrapper.le(HfTask::getCreatedAt, java.time.LocalDateTime.parse(condition.getCreatedAtEnd() + "T23:59:59"));
-        }
-        if (condition.getKeyword() != null && !condition.getKeyword().trim().isEmpty()) {
-            wrapper.like(HfTask::getTitle, condition.getKeyword().trim());
-        }
+        applyCommonConditions(wrapper, condition);
+        applyDateConditions(wrapper, condition);
         wrapper.orderByDesc(HfTask::getCreatedAt);
         return hfTaskMapper.selectPage(page, wrapper);
     }
@@ -128,6 +94,7 @@ public class HfTaskRepository {
         LambdaQueryWrapper<HfTask> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(HfTask::getAssigneeId, condition.getAssigneeId());
         applyCommonConditions(wrapper, condition);
+        applyDateConditions(wrapper, condition);
         wrapper.orderByDesc(HfTask::getCreatedAt);
         return hfTaskMapper.selectPage(page, wrapper);
     }
@@ -136,6 +103,7 @@ public class HfTaskRepository {
         LambdaQueryWrapper<HfTask> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(HfTask::getReporterId, condition.getReporterId());
         applyCommonConditions(wrapper, condition);
+        applyDateConditions(wrapper, condition);
         wrapper.orderByDesc(HfTask::getCreatedAt);
         return hfTaskMapper.selectPage(page, wrapper);
     }
@@ -149,6 +117,7 @@ public class HfTaskRepository {
                 .or().eq(HfTask::getDeveloperId, userId)
                 .or().eq(HfTask::getTesterId, userId));
         applyCommonConditions(wrapper, condition);
+        applyDateConditions(wrapper, condition);
         wrapper.orderByDesc(HfTask::getCreatedAt);
         return hfTaskMapper.selectPage(page, wrapper);
     }
@@ -163,8 +132,29 @@ public class HfTaskRepository {
         if (condition.getPriority() != null) {
             wrapper.eq(HfTask::getPriority, condition.getPriority());
         }
+        if (condition.getSprintId() != null) {
+            wrapper.eq(HfTask::getSprintId, condition.getSprintId());
+        }
+        if (condition.getIsDelayed() != null) {
+            wrapper.eq(HfTask::getIsDelayed, condition.getIsDelayed());
+        }
         if (condition.getKeyword() != null && !condition.getKeyword().trim().isEmpty()) {
             wrapper.like(HfTask::getTitle, condition.getKeyword().trim());
+        }
+    }
+
+    private void applyDateConditions(LambdaQueryWrapper<HfTask> wrapper, TaskCondition condition) {
+        if (condition.getDueDateStart() != null) {
+            wrapper.ge(HfTask::getDueDate, condition.getDueDateStart());
+        }
+        if (condition.getDueDateEnd() != null) {
+            wrapper.le(HfTask::getDueDate, condition.getDueDateEnd());
+        }
+        if (condition.getCreatedAtStart() != null) {
+            wrapper.ge(HfTask::getCreatedAt, condition.getCreatedAtStart());
+        }
+        if (condition.getCreatedAtEnd() != null) {
+            wrapper.le(HfTask::getCreatedAt, condition.getCreatedAtEnd());
         }
     }
 
@@ -172,7 +162,7 @@ public class HfTaskRepository {
         LambdaQueryWrapper<HfTask> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(HfTask::getProjectId, projectId)
                 .orderByDesc(HfTask::getTaskSeq)
-                .last("LIMIT 1");
+                .last("LIMIT 1 FOR UPDATE");
         HfTask task = hfTaskMapper.selectOne(wrapper);
         return task != null ? task.getTaskSeq() : 0;
     }
