@@ -1,5 +1,6 @@
 package cn.wbnull.helloflow.app.aspect;
 
+import cn.wbnull.helloflow.app.filter.TraceIdFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -48,6 +49,7 @@ public class ApiLogAspect {
 
     @Around("controllerPointcut()")
     public Object around(ProceedingJoinPoint joinPoint) throws Throwable {
+        markControllerHandled();
         long startTime = System.currentTimeMillis();
 
         String className = joinPoint.getTarget().getClass().getSimpleName();
@@ -70,6 +72,14 @@ public class ApiLogAspect {
         String response = toJsonString(result);
         log.info("[响应] {} | {}.{} | 耗时:{}ms | {}", uri, className, methodName, cost, response);
         return result;
+    }
+
+    private void markControllerHandled() {
+        ServletRequestAttributes attributes =
+                (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attributes != null) {
+            attributes.getRequest().setAttribute(TraceIdFilter.CONTROLLER_HANDLED, true);
+        }
     }
 
     private String getRequestUri() {
