@@ -6,6 +6,7 @@ package cn.wbnull.helloflow.security.handler;
 
 import cn.wbnull.helloflow.common.model.Result;
 import cn.wbnull.helloflow.common.model.ResultCode;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * @date 2026-05-26
  */
 @RestControllerAdvice
+@Order(1)
 public class SecurityExceptionHandler {
 
     @ExceptionHandler(BadCredentialsException.class)
