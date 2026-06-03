@@ -70,6 +70,12 @@ public class HfTaskRepository extends BaseRepository<HfTaskMapper, HfTask> {
         if (condition.getProjectId() != null) {
             wrapper.eq(HfTask::getProjectId, condition.getProjectId());
         }
+        if (condition.getAssigneeId() != null) {
+            wrapper.eq(HfTask::getAssigneeId, condition.getAssigneeId());
+        }
+        if (condition.getReporterId() != null) {
+            wrapper.eq(HfTask::getReporterId, condition.getReporterId());
+        }
         wrapper.isNull(HfTask::getParentId);
         applyCommonConditions(wrapper, condition);
         applyDateConditions(wrapper, condition);
