@@ -4,7 +4,7 @@
     <property name="LOG_PATH" value="${LOG_PATH:-./logs}"/>
     <property name="APP_NAME" value="hello-flow-server"/>
     <property name="LOG_PATTERN"
-              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%X{traceId:-}] [%-20.20thread] %-5level %-50.50logger{50} - %msg%n"/>
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%-20.20thread] %-40.40logger{40} [%X{traceId:-}] - %msg%n"/>
     <property name="MAX_HISTORY" value="30"/>
     <property name="MAX_FILE_SIZE" value="100MB"/>
     <property name="TOTAL_SIZE_CAP" value="3GB"/>
