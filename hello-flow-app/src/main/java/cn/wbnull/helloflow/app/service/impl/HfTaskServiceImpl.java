@@ -3,6 +3,7 @@ package cn.wbnull.helloflow.app.service.impl;
 import cn.wbnull.helloflow.app.dto.mapstruct.TaskMapper;
 import cn.wbnull.helloflow.app.dto.task.*;
 import cn.wbnull.helloflow.app.service.HfNotificationService;
+import cn.wbnull.helloflow.app.service.HfProjectService;
 import cn.wbnull.helloflow.app.service.HfTaskHistoryService;
 import cn.wbnull.helloflow.app.service.HfTaskService;
 import cn.wbnull.helloflow.common.exception.BusinessException;
@@ -50,6 +51,7 @@ public class HfTaskServiceImpl implements HfTaskService {
     private final SysUserRepository sysUserRepository;
     private final HfTaskHistoryService taskHistoryService;
     private final HfNotificationService notificationService;
+    private final HfProjectService hfProjectService;
     private final TaskMapper taskMapper;
 
     @Override
@@ -123,6 +125,7 @@ public class HfTaskServiceImpl implements HfTaskService {
     public TaskVO updateTask(Long id, TaskUpdateRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
         HfTask task = getTaskOrThrow(id);
+        hfProjectService.validateNotArchived(task.getProjectId());
         if (request.getTitle() != null) {
             task.setTitle(request.getTitle());
         }
@@ -163,6 +166,7 @@ public class HfTaskServiceImpl implements HfTaskService {
     public void deleteTask(Long id) {
         Long userId = SecurityUtils.getCurrentUserId();
         HfTask task = getTaskOrThrow(id);
+        hfProjectService.validateNotArchived(task.getProjectId());
         if (!task.getCreatedBy().equals(userId)) {
             throw new BusinessException(ResultCode.FORBIDDEN);
         }
@@ -196,6 +200,7 @@ public class HfTaskServiceImpl implements HfTaskService {
     public void assignTask(Long id, TaskAssignRequest request) {
         Long operatorId = SecurityUtils.getCurrentUserId();
         HfTask task = getTaskOrThrow(id);
+        hfProjectService.validateNotArchived(task.getProjectId());
         Long oldAssignee = task.getAssigneeId();
         task.setAssigneeId(request.getAssigneeId());
         task.setDeveloperId(request.getAssigneeId());
@@ -214,6 +219,7 @@ public class HfTaskServiceImpl implements HfTaskService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void startTask(Long id) {
+        validateNotArchivedByTaskId(id);
         transitionTask(id, TaskStatusEnum.TODO, TaskStatusEnum.IN_PROGRESS, TaskActionEnum.STATUS_CHANGE,
                 task -> task.setActualStartDate(LocalDate.now()),
                 (task, userId) -> log.info("开始开发：taskId={}", id));
@@ -222,13 +228,14 @@ public class HfTaskServiceImpl implements HfTaskService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void completeDev(Long id) {
+        validateNotArchivedByTaskId(id);
         transitionTask(id, TaskStatusEnum.IN_PROGRESS, TaskStatusEnum.IN_REVIEW, TaskActionEnum.STATUS_CHANGE,
                 null,
                 (task, userId) -> {
                     HfProject project = hfProjectRepository.selectById(task.getProjectId());
                     if (project != null && project.getDevLeadId() != null) {
-                        notificationService.sendNotification(project.getDevLeadId(), "任务待评审",
-                                "任务「" + task.getTitle() + "」开发完成，等待评审",
+                        notificationService.sendNotification(project.getDevLeadId(), "任务待审查",
+                                "任务「" + task.getTitle() + "」开发完成，等待审查",
                                 NotificationTypeEnum.STATUS_CHANGE.getCode(), task.getId());
                     }
                     log.info("开发完成：taskId={}", id);
@@ -240,6 +247,7 @@ public class HfTaskServiceImpl implements HfTaskService {
     public void reviewPass(Long id) {
         Long userId = SecurityUtils.getCurrentUserId();
         HfTask task = getTaskOrThrow(id);
+        hfProjectService.validateNotArchived(task.getProjectId());
         if (!TaskStatusEnum.IN_REVIEW.matches(task.getStatus())) {
             throw new BusinessException(ResultCode.TASK_STATUS_TRANSITION_INVALID);
         }
@@ -259,10 +267,10 @@ public class HfTaskServiceImpl implements HfTaskService {
             task.setTesterId(testerId);
             hfTaskRepository.updateById(task);
             notificationService.sendNotification(testerId, "任务待测试",
-                    "任务「" + task.getTitle() + "」评审通过，等待测试",
+                    "任务「" + task.getTitle() + "」审查通过，等待测试",
                     NotificationTypeEnum.STATUS_CHANGE.getCode(), task.getId());
         }
-        log.info("评审通过：taskId={}", id);
+        log.info("审查通过：taskId={}", id);
     }
 
     @Override
@@ -270,6 +278,7 @@ public class HfTaskServiceImpl implements HfTaskService {
     public void reviewReject(Long id) {
         Long userId = SecurityUtils.getCurrentUserId();
         HfTask task = getTaskOrThrow(id);
+        hfProjectService.validateNotArchived(task.getProjectId());
         if (!TaskStatusEnum.IN_REVIEW.matches(task.getStatus())) {
             throw new BusinessException(ResultCode.TASK_STATUS_TRANSITION_INVALID);
         }
@@ -281,11 +290,11 @@ public class HfTaskServiceImpl implements HfTaskService {
         recordStatusHistory(id, userId, oldStatus, TaskStatusEnum.IN_PROGRESS, TaskActionEnum.STATUS_CHANGE);
         // 通知开发工程师
         if (task.getDeveloperId() != null) {
-            notificationService.sendNotification(task.getDeveloperId(), "任务评审不通过",
-                    "任务「" + task.getTitle() + "」评审不通过，请修改",
+            notificationService.sendNotification(task.getDeveloperId(), "任务审查不通过",
+                    "任务「" + task.getTitle() + "」审查不通过，请修改",
                     NotificationTypeEnum.STATUS_CHANGE.getCode(), task.getId());
         }
-        log.info("评审不通过：taskId={}", id);
+        log.info("审查不通过：taskId={}", id);
     }
 
     @Override
@@ -293,6 +302,7 @@ public class HfTaskServiceImpl implements HfTaskService {
     public void testPass(Long id) {
         Long userId = SecurityUtils.getCurrentUserId();
         HfTask task = getTaskOrThrow(id);
+        hfProjectService.validateNotArchived(task.getProjectId());
         if (!TaskStatusEnum.IN_TEST.matches(task.getStatus())) {
             throw new BusinessException(ResultCode.TASK_STATUS_TRANSITION_INVALID);
         }
@@ -315,6 +325,7 @@ public class HfTaskServiceImpl implements HfTaskService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void testReject(Long id) {
+        validateNotArchivedByTaskId(id);
         transitionTask(id, TaskStatusEnum.IN_TEST, TaskStatusEnum.IN_PROGRESS, TaskActionEnum.TEST_REJECT,
                 task -> task.setAssigneeId(task.getDeveloperId()),
                 (task, userId) -> {
@@ -332,6 +343,7 @@ public class HfTaskServiceImpl implements HfTaskService {
     public void reopenTask(Long id) {
         Long userId = SecurityUtils.getCurrentUserId();
         HfTask task = getTaskOrThrow(id);
+        hfProjectService.validateNotArchived(task.getProjectId());
         if (!TaskStatusEnum.DONE.matches(task.getStatus()) && !TaskStatusEnum.CLOSED.matches(task.getStatus())) {
             throw new BusinessException(ResultCode.TASK_STATUS_TRANSITION_INVALID);
         }
@@ -353,6 +365,7 @@ public class HfTaskServiceImpl implements HfTaskService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void closeTask(Long id) {
+        validateNotArchivedByTaskId(id);
         transitionTask(id, TaskStatusEnum.DONE, TaskStatusEnum.CLOSED, TaskActionEnum.CLOSE,
                 task -> task.setCloseDate(java.time.LocalDateTime.now()),
                 (task, userId) -> log.info("关闭任务：taskId={}", id));
@@ -363,6 +376,7 @@ public class HfTaskServiceImpl implements HfTaskService {
     public void cancelTask(Long id, TaskCancelRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
         HfTask task = getTaskOrThrow(id);
+        hfProjectService.validateNotArchived(task.getProjectId());
         if (!TaskStatusEnum.TODO.matches(task.getStatus()) && !TaskStatusEnum.IN_PROGRESS.matches(task.getStatus())) {
             throw new BusinessException(ResultCode.TASK_STATUS_TRANSITION_INVALID);
         }
@@ -379,6 +393,7 @@ public class HfTaskServiceImpl implements HfTaskService {
     public void delayTask(Long id, TaskDelayRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
         HfTask task = getTaskOrThrow(id);
+        hfProjectService.validateNotArchived(task.getProjectId());
         if (!TaskStatusEnum.IN_PROGRESS.matches(task.getStatus())) {
             throw new BusinessException(ResultCode.TASK_STATUS_TRANSITION_INVALID);
         }
@@ -425,6 +440,7 @@ public class HfTaskServiceImpl implements HfTaskService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void addRelation(Long taskId, TaskRelationCreateRequest request) {
+        validateNotArchivedByTaskId(taskId);
         HfTaskRelation existing = hfTaskRelationRepository.selectByTaskIdAndRelatedTaskIdAndType(
                 taskId, request.getRelatedTaskId(), request.getRelationType());
         if (existing != null) {
@@ -610,11 +626,11 @@ public class HfTaskServiceImpl implements HfTaskService {
         if (position == null) {
             return;
         }
-        // 项目经理不允许评审
+        // 项目经理不允许审查
         if ("PM".equals(position.getCode())) {
             throw new BusinessException(ResultCode.PM_CANNOT_REVIEW);
         }
-        // 开发工程师评审自己的任务：仅当项目中只有自己一个开发工程师时允许
+        // 开发工程师审查自己的任务：仅当项目中只有自己一个开发工程师时允许
         if ("DEV".equals(position.getCode()) && task.getDeveloperId() != null && task.getDeveloperId().equals(userId)) {
             HfProject project = hfProjectRepository.selectById(task.getProjectId());
             if (project == null) {
@@ -642,6 +658,13 @@ public class HfTaskServiceImpl implements HfTaskService {
             if (devCount > 1) {
                 throw new BusinessException(ResultCode.CANNOT_REVIEW_OWN_TASK);
             }
+        }
+    }
+
+    private void validateNotArchivedByTaskId(Long taskId) {
+        HfTask task = hfTaskRepository.selectById(taskId);
+        if (task != null) {
+            hfProjectService.validateNotArchived(task.getProjectId());
         }
     }
 }

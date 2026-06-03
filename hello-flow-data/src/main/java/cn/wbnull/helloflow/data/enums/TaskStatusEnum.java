@@ -17,7 +17,7 @@ public enum TaskStatusEnum {
 
     TODO(1, "未开始"),
     IN_PROGRESS(2, "进行中"),
-    IN_REVIEW(3, "待评审"),
+    IN_REVIEW(3, "待审查"),
     IN_TEST(4, "待测试"),
     DONE(5, "已完成"),
     CLOSED(6, "已关闭"),

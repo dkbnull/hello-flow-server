@@ -3,6 +3,7 @@ package cn.wbnull.helloflow.app.service.impl;
 import cn.wbnull.helloflow.app.dto.sprint.SprintCreateRequest;
 import cn.wbnull.helloflow.app.dto.sprint.SprintUpdateRequest;
 import cn.wbnull.helloflow.app.dto.sprint.SprintVO;
+import cn.wbnull.helloflow.app.service.HfProjectService;
 import cn.wbnull.helloflow.app.service.HfSprintService;
 import cn.wbnull.helloflow.common.exception.BusinessException;
 import cn.wbnull.helloflow.common.model.ResultCode;
@@ -30,9 +31,11 @@ import java.util.stream.Collectors;
 public class HfSprintServiceImpl implements HfSprintService {
 
     private final HfSprintRepository hfSprintRepository;
+    private final HfProjectService hfProjectService;
 
     @Override
     public SprintVO createSprint(Long projectId, SprintCreateRequest request) {
+        hfProjectService.validateNotArchived(projectId);
         Long userId = SecurityUtils.getCurrentUserId();
         HfSprint sprint = new HfSprint();
         BeanCopyUtils.copyNonNullProperties(request, sprint, "startDate", "endDate");
@@ -53,6 +56,7 @@ public class HfSprintServiceImpl implements HfSprintService {
     @Override
     public SprintVO updateSprint(Long id, SprintUpdateRequest request) {
         HfSprint sprint = getSprintOrThrow(id);
+        hfProjectService.validateNotArchived(sprint.getProjectId());
         BeanCopyUtils.copyNonNullProperties(request, sprint, "startDate", "endDate");
         if (request.getStartDate() != null) {
             sprint.setStartDate(LocalDate.parse(request.getStartDate()));
@@ -73,6 +77,7 @@ public class HfSprintServiceImpl implements HfSprintService {
     @Override
     public void startSprint(Long id) {
         HfSprint sprint = getSprintOrThrow(id);
+        hfProjectService.validateNotArchived(sprint.getProjectId());
         sprint.setStatus(2);
         hfSprintRepository.updateById(sprint);
         log.info("开始迭代：id={}", id);
@@ -81,6 +86,7 @@ public class HfSprintServiceImpl implements HfSprintService {
     @Override
     public void completeSprint(Long id) {
         HfSprint sprint = getSprintOrThrow(id);
+        hfProjectService.validateNotArchived(sprint.getProjectId());
         sprint.setStatus(3);
         hfSprintRepository.updateById(sprint);
         log.info("完成迭代：id={}", id);

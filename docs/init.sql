@@ -134,7 +134,7 @@ INSERT INTO `sys_dict_data` (`type_id`, `label`, `value`, `sort`) VALUES
 INSERT INTO `sys_dict_data` (`type_id`, `label`, `value`, `sort`) VALUES
 (3, '未开始', '1', 1),
 (3, '进行中', '2', 2),
-(3, '待评审', '3', 3),
+(3, '待审查', '3', 3),
 (3, '待测试', '4', 4),
 (3, '已完成', '5', 5),
 (3, '已关闭', '6', 6),
@@ -251,7 +251,7 @@ CREATE TABLE `hf_task` (
   `type`             tinyint      NOT NULL DEFAULT 1       COMMENT '1-需求 2-完善 3-缺陷',
   `title`            varchar(200) NOT NULL                COMMENT '标题',
   `description`      longtext     DEFAULT NULL             COMMENT '描述（富文本）',
-  `status`           tinyint      NOT NULL DEFAULT 1       COMMENT '1-未开始 2-进行中 3-待评审 4-待测试 5-已完成 6-已关闭 7-取消',
+  `status`           tinyint      NOT NULL DEFAULT 1       COMMENT '1-未开始 2-进行中 3-待审查 4-待测试 5-已完成 6-已关闭 7-取消',
   `priority`         tinyint      NOT NULL DEFAULT 3       COMMENT '1-最低 2-低 3-中 4-高 5-最高',
   `assignee_id`      bigint       DEFAULT NULL             COMMENT '当前指派人ID',
   `reporter_id`      bigint       DEFAULT NULL             COMMENT '创建者ID',

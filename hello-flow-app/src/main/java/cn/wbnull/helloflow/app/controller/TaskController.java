@@ -89,14 +89,14 @@ public class TaskController {
     }
 
     @PostMapping("/tasks/{id}/review-pass")
-    @Operation(summary = "评审通过")
+    @Operation(summary = "审查通过")
     public Result<Void> reviewPass(@PathVariable Long id) {
         hfTaskService.reviewPass(id);
         return Result.success();
     }
 
     @PostMapping("/tasks/{id}/review-reject")
-    @Operation(summary = "评审不通过")
+    @Operation(summary = "审查不通过")
     public Result<Void> reviewReject(@PathVariable Long id) {
         hfTaskService.reviewReject(id);
         return Result.success();

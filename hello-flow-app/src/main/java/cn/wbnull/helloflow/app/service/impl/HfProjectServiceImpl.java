@@ -78,6 +78,18 @@ public class HfProjectServiceImpl implements HfProjectService {
             throw new BusinessException(ResultCode.PROJECT_NOT_FOUND);
         }
 
+        // 归档项目仅允许修改status（取消归档），其他字段禁止修改
+        if (project.getStatus() == 0) {
+            if (request.getStatus() == null || request.getStatus() != 1) {
+                throw new BusinessException(ResultCode.PROJECT_ARCHIVED);
+            }
+            // 取消归档：只更新状态
+            project.setStatus(1);
+            hfProjectRepository.updateById(project);
+            log.info("取消归档项目：id={}", id);
+            return toProjectVO(project);
+        }
+
         validateCodeUnique(request.getCode(), id);
         validateNameUnique(request.getName(), id);
         if (request.getPmId() != null) {
@@ -181,6 +193,7 @@ public class HfProjectServiceImpl implements HfProjectService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void addMember(Long projectId, Long userId) {
+        validateNotArchived(projectId);
         addMemberInternal(projectId, userId);
         log.info("添加项目成员：projectId={}, userId={}", projectId, userId);
     }
@@ -188,6 +201,7 @@ public class HfProjectServiceImpl implements HfProjectService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void removeMember(Long projectId, Long userId) {
+        validateNotArchived(projectId);
         hfProjectMemberRepository.deleteByProjectIdAndUserId(projectId, userId);
         log.info("移除项目成员：projectId={}, userId={}", projectId, userId);
     }
@@ -196,6 +210,14 @@ public class HfProjectServiceImpl implements HfProjectService {
         HfProject existing = hfProjectRepository.selectByCode(code);
         if (existing != null && !existing.getId().equals(excludeId)) {
             throw new BusinessException(ResultCode.PROJECT_CODE_EXISTS);
+        }
+    }
+
+    @Override
+    public void validateNotArchived(Long projectId) {
+        HfProject project = hfProjectRepository.selectById(projectId);
+        if (project != null && project.getStatus() == 0) {
+            throw new BusinessException(ResultCode.PROJECT_ARCHIVED);
         }
     }
 

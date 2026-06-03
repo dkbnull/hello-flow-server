@@ -50,4 +50,9 @@ public interface HfProjectService {
      * 移除项目成员
      */
     void removeMember(Long projectId, Long userId);
+
+    /**
+     * 校验项目未归档，归档项目抛出异常
+     */
+    void validateNotArchived(Long projectId);
 }

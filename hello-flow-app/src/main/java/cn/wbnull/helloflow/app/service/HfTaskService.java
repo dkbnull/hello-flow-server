@@ -55,12 +55,12 @@ public interface HfTaskService {
     void completeDev(Long id);
 
     /**
-     * 评审通过
+     * 审查通过
      */
     void reviewPass(Long id);
 
     /**
-     * 评审不通过
+     * 审查不通过
      */
     void reviewReject(Long id);
 
