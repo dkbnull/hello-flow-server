@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.wbnull.helloflow.data.mapper.HfProjectMemberMapper">
+
+    <!-- 查询项目成员（忽略逻辑删除条件） -->
+    <select id="selectIgnoreDeleted" resultType="cn.wbnull.helloflow.data.entity.HfProjectMember">
+        SELECT * FROM hf_project_member
+        WHERE project_id = #{projectId} AND user_id = #{userId}
+        LIMIT 1
+    </select>
+
+    <!-- 恢复已逻辑删除的项目成员记录（忽略逻辑删除条件） -->
+    <update id="restoreIgnoreDeleted">
+        UPDATE hf_project_member
+        SET is_deleted = 0
+        WHERE project_id = #{projectId} AND user_id = #{userId} AND is_deleted = 1
+    </update>
+
+</mapper>

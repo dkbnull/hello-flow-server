@@ -249,13 +249,22 @@ public class HfProjectServiceImpl implements HfProjectService {
         if (userId == null) {
             return;
         }
+        // 先查未删除的记录
         HfProjectMember existing = hfProjectMemberRepository.selectByProjectIdAndUserId(projectId, userId);
-        if (existing == null) {
-            HfProjectMember member = new HfProjectMember();
-            member.setProjectId(projectId);
-            member.setUserId(userId);
-            hfProjectMemberRepository.insert(member);
+        if (existing != null) {
+            return;
         }
+        // 再查已逻辑删除的记录，存在则恢复
+        HfProjectMember deleted = hfProjectMemberRepository.selectByProjectIdAndUserIdIgnoreDeleted(projectId, userId);
+        if (deleted != null) {
+            hfProjectMemberRepository.restoreByProjectIdAndUserId(projectId, userId);
+            return;
+        }
+        // 不存在任何记录，新建
+        HfProjectMember member = new HfProjectMember();
+        member.setProjectId(projectId);
+        member.setUserId(userId);
+        hfProjectMemberRepository.insert(member);
     }
 
     private ProjectVO toProjectVO(HfProject project) {

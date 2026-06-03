@@ -212,7 +212,7 @@ CREATE TABLE `hf_project_member` (
   `joined_at`  datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '加入时间',
   `is_deleted` tinyint  NOT NULL DEFAULT 0       COMMENT '0-否 1-是（逻辑删除）',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_project_user` (`project_id`, `user_id`),
+  UNIQUE KEY `uk_project_user` (`project_id`, `user_id`, `is_deleted`),
   KEY `idx_user_id` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='项目成员表';
 
