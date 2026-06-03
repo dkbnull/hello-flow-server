@@ -53,7 +53,12 @@ public class TaskVO {
 
         private Long id;
         private Long relatedTaskId;
+        private String relatedTaskCode;
         private String relatedTaskTitle;
+        private Integer relatedTaskType;
+        private Integer relatedTaskStatus;
+        private Long relatedTaskDeveloperId;
+        private String relatedTaskDeveloperName;
         private Integer relationType;
     }
 }

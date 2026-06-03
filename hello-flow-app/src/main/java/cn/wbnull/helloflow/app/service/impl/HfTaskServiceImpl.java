@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -425,25 +426,59 @@ public class HfTaskServiceImpl implements HfTaskService {
 
     @Override
     public List<TaskVO.TaskRelationVO> listRelations(Long taskId) {
-        List<HfTaskRelation> relations = hfTaskRelationRepository.selectByTaskId(taskId);
-        return relations.stream().map(r -> {
+        List<TaskVO.TaskRelationVO> result = new ArrayList<>();
+
+        // 正向查询：当前任务作为 task_id
+        List<HfTaskRelation> forwardRelations = hfTaskRelationRepository.selectByTaskId(taskId);
+        for (HfTaskRelation r : forwardRelations) {
             TaskVO.TaskRelationVO vo = new TaskVO.TaskRelationVO();
             BeanCopyUtils.copyNonNullProperties(r, vo);
-            HfTask relatedTask = hfTaskRepository.selectById(r.getRelatedTaskId());
-            if (relatedTask != null) {
-                vo.setRelatedTaskTitle(relatedTask.getTitle());
+            fillRelatedTaskInfo(vo, r.getRelatedTaskId());
+            result.add(vo);
+        }
+
+        // 反向查询：当前任务作为 related_task_id
+        List<HfTaskRelation> reverseRelations = hfTaskRelationRepository.selectByRelatedTaskId(taskId);
+        for (HfTaskRelation r : reverseRelations) {
+            TaskVO.TaskRelationVO vo = new TaskVO.TaskRelationVO();
+            vo.setId(r.getId());
+            vo.setRelatedTaskId(r.getTaskId());
+            vo.setRelationType(r.getRelationType());
+            fillRelatedTaskInfo(vo, r.getTaskId());
+            result.add(vo);
+        }
+
+        return result;
+    }
+
+    private void fillRelatedTaskInfo(TaskVO.TaskRelationVO vo, Long relatedTaskId) {
+        HfTask relatedTask = hfTaskRepository.selectById(relatedTaskId);
+        if (relatedTask != null) {
+            vo.setRelatedTaskCode(relatedTask.getTaskCode());
+            vo.setRelatedTaskTitle(relatedTask.getTitle());
+            vo.setRelatedTaskType(relatedTask.getType());
+            vo.setRelatedTaskStatus(relatedTask.getStatus());
+            vo.setRelatedTaskDeveloperId(relatedTask.getDeveloperId());
+            if (relatedTask.getDeveloperId() != null) {
+                vo.setRelatedTaskDeveloperName(sysUserRepository.getDisplayName(relatedTask.getDeveloperId()));
             }
-            return vo;
-        }).collect(Collectors.toList());
+        }
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void addRelation(Long taskId, TaskRelationCreateRequest request) {
         validateNotArchivedByTaskId(taskId);
+        // 检查正向关联是否已存在（A→B）
         HfTaskRelation existing = hfTaskRelationRepository.selectByTaskIdAndRelatedTaskIdAndType(
                 taskId, request.getRelatedTaskId(), request.getRelationType());
         if (existing != null) {
+            throw new BusinessException(ResultCode.TASK_RELATION_EXISTS);
+        }
+        // 检查反向关联是否已存在（B→A），双向互关联只需一条记录
+        HfTaskRelation reverseExisting = hfTaskRelationRepository.selectByRelatedTaskIdAndTaskIdAndType(
+                request.getRelatedTaskId(), taskId, request.getRelationType());
+        if (reverseExisting != null) {
             throw new BusinessException(ResultCode.TASK_RELATION_EXISTS);
         }
         HfTaskRelation relation = new HfTaskRelation();
