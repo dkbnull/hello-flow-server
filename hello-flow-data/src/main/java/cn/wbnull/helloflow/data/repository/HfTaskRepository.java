@@ -5,7 +5,6 @@ import cn.wbnull.helloflow.data.entity.HfTask;
 import cn.wbnull.helloflow.data.mapper.HfTaskMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -17,25 +16,13 @@ import java.util.List;
  * @date 2026-05-27
  */
 @Repository
-@RequiredArgsConstructor
-public class HfTaskRepository {
+public class HfTaskRepository extends BaseRepository<HfTaskMapper, HfTask> {
 
     private final HfTaskMapper hfTaskMapper;
 
-    public HfTask selectById(Long id) {
-        return hfTaskMapper.selectById(id);
-    }
-
-    public void insert(HfTask task) {
-        hfTaskMapper.insert(task);
-    }
-
-    public void updateById(HfTask task) {
-        hfTaskMapper.updateById(task);
-    }
-
-    public void deleteById(Long id) {
-        hfTaskMapper.deleteById(id);
+    public HfTaskRepository(HfTaskMapper hfTaskMapper) {
+        super(hfTaskMapper);
+        this.hfTaskMapper = hfTaskMapper;
     }
 
     public List<HfTask> selectByParentId(Long parentId) {

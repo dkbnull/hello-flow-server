@@ -4,7 +4,6 @@ import cn.wbnull.helloflow.data.entity.HfProject;
 import cn.wbnull.helloflow.data.mapper.HfProjectMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -16,21 +15,13 @@ import java.util.List;
  * @date 2026-05-27
  */
 @Repository
-@RequiredArgsConstructor
-public class HfProjectRepository {
+public class HfProjectRepository extends BaseRepository<HfProjectMapper, HfProject> {
 
     private final HfProjectMapper hfProjectMapper;
 
-    public HfProject selectById(Long id) {
-        return hfProjectMapper.selectById(id);
-    }
-
-    public void insert(HfProject project) {
-        hfProjectMapper.insert(project);
-    }
-
-    public void updateById(HfProject project) {
-        hfProjectMapper.updateById(project);
+    public HfProjectRepository(HfProjectMapper hfProjectMapper) {
+        super(hfProjectMapper);
+        this.hfProjectMapper = hfProjectMapper;
     }
 
     public Page<HfProject> selectPageByCondition(Page<HfProject> page, String keyword, Integer status, List<Long> projectIds) {

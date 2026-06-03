@@ -17,19 +17,15 @@ import cn.wbnull.helloflow.data.repository.HfPositionRepository;
 import cn.wbnull.helloflow.data.repository.HfProjectMemberRepository;
 import cn.wbnull.helloflow.data.repository.HfProjectRepository;
 import cn.wbnull.helloflow.data.repository.SysUserRepository;
+import cn.wbnull.helloflow.data.util.PageUtils;
 import cn.wbnull.helloflow.security.util.SecurityUtils;
-
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -130,9 +126,7 @@ public class HfProjectServiceImpl implements HfProjectService {
         }
         Page<HfProject> pageResult = hfProjectRepository.selectPageByCondition(
                 new Page<>(query.getPage(), query.getPageSize()), query.getKeyword(), query.getStatus(), projectIds);
-        Page<ProjectVO> voPage = new Page<>(pageResult.getCurrent(), pageResult.getSize(), pageResult.getTotal());
-        voPage.setRecords(pageResult.getRecords().stream().map(this::toProjectVO).collect(Collectors.toList()));
-        return voPage;
+        return PageUtils.convertPage(pageResult, this::toProjectVO);
     }
 
     @Override
@@ -245,22 +239,13 @@ public class HfProjectServiceImpl implements HfProjectService {
     private ProjectVO toProjectVO(HfProject project) {
         ProjectVO vo = projectMapper.toProjectVO(project);
         if (project.getPmId() != null) {
-            SysUser pm = sysUserRepository.selectById(project.getPmId());
-            if (pm != null) {
-                vo.setPmName(pm.getNickname() != null ? pm.getNickname() : pm.getUsername());
-            }
+            vo.setPmName(sysUserRepository.getDisplayName(project.getPmId()));
         }
         if (project.getDevLeadId() != null) {
-            SysUser devLead = sysUserRepository.selectById(project.getDevLeadId());
-            if (devLead != null) {
-                vo.setDevLeadName(devLead.getNickname() != null ? devLead.getNickname() : devLead.getUsername());
-            }
+            vo.setDevLeadName(sysUserRepository.getDisplayName(project.getDevLeadId()));
         }
         if (project.getTestLeadId() != null) {
-            SysUser testLead = sysUserRepository.selectById(project.getTestLeadId());
-            if (testLead != null) {
-                vo.setTestLeadName(testLead.getNickname() != null ? testLead.getNickname() : testLead.getUsername());
-            }
+            vo.setTestLeadName(sysUserRepository.getDisplayName(project.getTestLeadId()));
         }
         return vo;
     }

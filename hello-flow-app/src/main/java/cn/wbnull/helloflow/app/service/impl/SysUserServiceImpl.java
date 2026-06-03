@@ -6,13 +6,12 @@ import cn.wbnull.helloflow.common.exception.BusinessException;
 import cn.wbnull.helloflow.common.model.ResultCode;
 import cn.wbnull.helloflow.common.util.BeanCopyUtils;
 import cn.wbnull.helloflow.data.entity.HfPosition;
-import cn.wbnull.helloflow.data.entity.SysRole;
 import cn.wbnull.helloflow.data.entity.SysUser;
 import cn.wbnull.helloflow.data.entity.SysUserRole;
 import cn.wbnull.helloflow.data.repository.HfPositionRepository;
-import cn.wbnull.helloflow.data.repository.SysRoleRepository;
 import cn.wbnull.helloflow.data.repository.SysUserRepository;
 import cn.wbnull.helloflow.data.repository.SysUserRoleRepository;
+import cn.wbnull.helloflow.data.util.PageUtils;
 import cn.wbnull.helloflow.security.util.SecurityUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
@@ -21,9 +20,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * 用户服务实现
@@ -37,7 +34,6 @@ import java.util.stream.Collectors;
 public class SysUserServiceImpl implements SysUserService {
 
     private final SysUserRepository sysUserRepository;
-    private final SysRoleRepository sysRoleRepository;
     private final SysUserRoleRepository sysUserRoleRepository;
     private final HfPositionRepository hfPositionRepository;
     private final PasswordEncoder passwordEncoder;
@@ -96,9 +92,7 @@ public class SysUserServiceImpl implements SysUserService {
     @Override
     public Page<UserVO> listUsers(String keyword, Integer status, Long positionId, Integer page, Integer pageSize) {
         Page<SysUser> pageResult = sysUserRepository.selectPageByCondition(new Page<>(page, pageSize), keyword, status, positionId);
-        Page<UserVO> voPage = new Page<>(pageResult.getCurrent(), pageResult.getSize(), pageResult.getTotal());
-        voPage.setRecords(pageResult.getRecords().stream().map(this::toUserVO).collect(Collectors.toList()));
-        return voPage;
+        return PageUtils.convertPage(pageResult, this::toUserVO);
     }
 
     @Override
@@ -126,19 +120,13 @@ public class SysUserServiceImpl implements SysUserService {
 
     @Override
     public List<String> getUserRoleCodes(Long userId) {
-        List<SysUserRole> userRoles = sysUserRoleRepository.selectByUserId(userId);
-        if (userRoles.isEmpty()) {
-            return Collections.emptyList();
-        }
-        List<Long> roleIds = userRoles.stream().map(SysUserRole::getRoleId).collect(Collectors.toList());
-        List<SysRole> roles = sysRoleRepository.selectByIds(roleIds);
-        return roles.stream().map(SysRole::getCode).collect(Collectors.toList());
+        return sysUserRepository.selectRoleCodesByUserId(userId);
     }
 
     private UserVO toUserVO(SysUser user) {
         UserVO vo = new UserVO();
         BeanCopyUtils.copyNonNullProperties(user, vo);
-        vo.setRoles(getUserRoleCodes(user.getId()));
+        vo.setRoles(sysUserRepository.selectRoleCodesByUserId(user.getId()));
         if (user.getPositionId() != null) {
             HfPosition position = hfPositionRepository.selectById(user.getPositionId());
             if (position != null) {

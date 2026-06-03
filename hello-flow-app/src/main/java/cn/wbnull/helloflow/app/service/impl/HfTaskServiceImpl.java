@@ -14,6 +14,7 @@ import cn.wbnull.helloflow.data.enums.NotificationTypeEnum;
 import cn.wbnull.helloflow.data.enums.TaskActionEnum;
 import cn.wbnull.helloflow.data.enums.TaskStatusEnum;
 import cn.wbnull.helloflow.data.repository.*;
+import cn.wbnull.helloflow.data.util.PageUtils;
 import cn.wbnull.helloflow.security.util.SecurityUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -186,9 +188,7 @@ public class HfTaskServiceImpl implements HfTaskService {
         BeanCopyUtils.copyNonNullProperties(query, condition);
         Page<HfTask> pageResult = hfTaskRepository.selectPageByCondition(
                 new Page<>(query.getPage(), query.getPageSize()), condition);
-        Page<TaskVO> voPage = new Page<>(pageResult.getCurrent(), pageResult.getSize(), pageResult.getTotal());
-        voPage.setRecords(toTaskVOList(pageResult.getRecords()));
-        return voPage;
+        return PageUtils.convertPage(pageResult, this::toTaskVO);
     }
 
     @Override
@@ -214,43 +214,25 @@ public class HfTaskServiceImpl implements HfTaskService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void startTask(Long id) {
-        Long userId = SecurityUtils.getCurrentUserId();
-        HfTask task = getTaskOrThrow(id);
-        if (!TaskStatusEnum.TODO.matches(task.getStatus())) {
-            throw new BusinessException(ResultCode.TASK_STATUS_TRANSITION_INVALID);
-        }
-        Integer oldStatus = task.getStatus();
-        task.setStatus(TaskStatusEnum.IN_PROGRESS.getCode());
-        task.setActualStartDate(LocalDate.now());
-        hfTaskRepository.updateById(task);
-        taskHistoryService.recordHistory(TaskHistoryCommand.builder()
-                .taskId(id).userId(userId).action(TaskActionEnum.STATUS_CHANGE)
-                .field("status").oldValue(String.valueOf(oldStatus)).newValue(String.valueOf(TaskStatusEnum.IN_PROGRESS.getCode())).build());
-        log.info("开始开发：taskId={}", id);
+        transitionTask(id, TaskStatusEnum.TODO, TaskStatusEnum.IN_PROGRESS, TaskActionEnum.STATUS_CHANGE,
+                task -> task.setActualStartDate(LocalDate.now()),
+                (task, userId) -> log.info("开始开发：taskId={}", id));
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void completeDev(Long id) {
-        Long userId = SecurityUtils.getCurrentUserId();
-        HfTask task = getTaskOrThrow(id);
-        if (!TaskStatusEnum.IN_PROGRESS.matches(task.getStatus())) {
-            throw new BusinessException(ResultCode.TASK_STATUS_TRANSITION_INVALID);
-        }
-        Integer oldStatus = task.getStatus();
-        task.setStatus(TaskStatusEnum.IN_REVIEW.getCode());
-        hfTaskRepository.updateById(task);
-        taskHistoryService.recordHistory(TaskHistoryCommand.builder()
-                .taskId(id).userId(userId).action(TaskActionEnum.STATUS_CHANGE)
-                .field("status").oldValue(String.valueOf(oldStatus)).newValue(String.valueOf(TaskStatusEnum.IN_REVIEW.getCode())).build());
-        // 通知开发主责
-        HfProject project = hfProjectRepository.selectById(task.getProjectId());
-        if (project != null && project.getDevLeadId() != null) {
-            notificationService.sendNotification(project.getDevLeadId(), "任务待评审",
-                    "任务「" + task.getTitle() + "」开发完成，等待评审",
-                    NotificationTypeEnum.STATUS_CHANGE.getCode(), task.getId());
-        }
-        log.info("开发完成：taskId={}", id);
+        transitionTask(id, TaskStatusEnum.IN_PROGRESS, TaskStatusEnum.IN_REVIEW, TaskActionEnum.STATUS_CHANGE,
+                null,
+                (task, userId) -> {
+                    HfProject project = hfProjectRepository.selectById(task.getProjectId());
+                    if (project != null && project.getDevLeadId() != null) {
+                        notificationService.sendNotification(project.getDevLeadId(), "任务待评审",
+                                "任务「" + task.getTitle() + "」开发完成，等待评审",
+                                NotificationTypeEnum.STATUS_CHANGE.getCode(), task.getId());
+                    }
+                    log.info("开发完成：taskId={}", id);
+                });
     }
 
     @Override
@@ -265,10 +247,8 @@ public class HfTaskServiceImpl implements HfTaskService {
         Integer oldStatus = task.getStatus();
         task.setStatus(TaskStatusEnum.IN_TEST.getCode());
         hfTaskRepository.updateById(task);
-        taskHistoryService.recordHistory(TaskHistoryCommand.builder()
-                .taskId(id).userId(userId).action(TaskActionEnum.STATUS_CHANGE)
-                .field("status").oldValue(String.valueOf(oldStatus)).newValue(String.valueOf(TaskStatusEnum.IN_TEST.getCode())).build());
-        // 自动指派测试人员：优先使用任务已指定的测试工程师，否则指派项目测试主责
+        recordStatusHistory(id, userId, oldStatus, TaskStatusEnum.IN_TEST, TaskActionEnum.STATUS_CHANGE);
+        // 自动指派测试人员
         Long testerId = task.getTesterId();
         HfProject project = hfProjectRepository.selectById(task.getProjectId());
         if (testerId == null && project != null) {
@@ -298,9 +278,7 @@ public class HfTaskServiceImpl implements HfTaskService {
         task.setStatus(TaskStatusEnum.IN_PROGRESS.getCode());
         task.setAssigneeId(task.getDeveloperId());
         hfTaskRepository.updateById(task);
-        taskHistoryService.recordHistory(TaskHistoryCommand.builder()
-                .taskId(id).userId(userId).action(TaskActionEnum.STATUS_CHANGE)
-                .field("status").oldValue(String.valueOf(oldStatus)).newValue(String.valueOf(TaskStatusEnum.IN_PROGRESS.getCode())).build());
+        recordStatusHistory(id, userId, oldStatus, TaskStatusEnum.IN_PROGRESS, TaskActionEnum.STATUS_CHANGE);
         // 通知开发工程师
         if (task.getDeveloperId() != null) {
             notificationService.sendNotification(task.getDeveloperId(), "任务评审不通过",
@@ -322,9 +300,7 @@ public class HfTaskServiceImpl implements HfTaskService {
         task.setStatus(TaskStatusEnum.DONE.getCode());
         task.setActualEndDate(LocalDate.now());
         hfTaskRepository.updateById(task);
-        taskHistoryService.recordHistory(TaskHistoryCommand.builder()
-                .taskId(id).userId(userId).action(TaskActionEnum.STATUS_CHANGE)
-                .field("status").oldValue(String.valueOf(oldStatus)).newValue(String.valueOf(TaskStatusEnum.DONE.getCode())).build());
+        recordStatusHistory(id, userId, oldStatus, TaskStatusEnum.DONE, TaskActionEnum.STATUS_CHANGE);
         // 检查父任务状态
         checkParentTaskStatus(task.getParentId());
         // 通知创建者
@@ -339,24 +315,16 @@ public class HfTaskServiceImpl implements HfTaskService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void testReject(Long id) {
-        Long userId = SecurityUtils.getCurrentUserId();
-        HfTask task = getTaskOrThrow(id);
-        if (!TaskStatusEnum.IN_TEST.matches(task.getStatus())) {
-            throw new BusinessException(ResultCode.TASK_STATUS_TRANSITION_INVALID);
-        }
-        Integer oldStatus = task.getStatus();
-        task.setStatus(TaskStatusEnum.IN_PROGRESS.getCode());
-        task.setAssigneeId(task.getDeveloperId());
-        hfTaskRepository.updateById(task);
-        taskHistoryService.recordHistory(TaskHistoryCommand.builder()
-                .taskId(id).userId(userId).action(TaskActionEnum.TEST_REJECT)
-                .field("status").oldValue(String.valueOf(oldStatus)).newValue(String.valueOf(TaskStatusEnum.IN_PROGRESS.getCode())).build());
-        if (task.getDeveloperId() != null) {
-            notificationService.sendNotification(task.getDeveloperId(), "任务测试不通过",
-                    "任务「" + task.getTitle() + "」测试不通过，请修改",
-                    NotificationTypeEnum.STATUS_CHANGE.getCode(), task.getId());
-        }
-        log.info("测试不通过：taskId={}", id);
+        transitionTask(id, TaskStatusEnum.IN_TEST, TaskStatusEnum.IN_PROGRESS, TaskActionEnum.TEST_REJECT,
+                task -> task.setAssigneeId(task.getDeveloperId()),
+                (task, userId) -> {
+                    if (task.getDeveloperId() != null) {
+                        notificationService.sendNotification(task.getDeveloperId(), "任务测试不通过",
+                                "任务「" + task.getTitle() + "」测试不通过，请修改",
+                                NotificationTypeEnum.STATUS_CHANGE.getCode(), task.getId());
+                    }
+                    log.info("测试不通过：taskId={}", id);
+                });
     }
 
     @Override
@@ -373,9 +341,7 @@ public class HfTaskServiceImpl implements HfTaskService {
         task.setActualEndDate(null);
         task.setCloseDate(null);
         hfTaskRepository.updateById(task);
-        taskHistoryService.recordHistory(TaskHistoryCommand.builder()
-                .taskId(id).userId(userId).action(TaskActionEnum.REOPEN)
-                .field("status").oldValue(String.valueOf(oldStatus)).newValue(String.valueOf(TaskStatusEnum.TODO.getCode())).build());
+        recordStatusHistory(id, userId, oldStatus, TaskStatusEnum.TODO, TaskActionEnum.REOPEN);
         if (task.getDeveloperId() != null) {
             notificationService.sendNotification(task.getDeveloperId(), "任务重新打开",
                     "任务「" + task.getTitle() + "」已重新打开",
@@ -387,19 +353,9 @@ public class HfTaskServiceImpl implements HfTaskService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void closeTask(Long id) {
-        Long userId = SecurityUtils.getCurrentUserId();
-        HfTask task = getTaskOrThrow(id);
-        if (!TaskStatusEnum.DONE.matches(task.getStatus())) {
-            throw new BusinessException(ResultCode.TASK_STATUS_TRANSITION_INVALID);
-        }
-        Integer oldStatus = task.getStatus();
-        task.setStatus(TaskStatusEnum.CLOSED.getCode());
-        task.setCloseDate(java.time.LocalDateTime.now());
-        hfTaskRepository.updateById(task);
-        taskHistoryService.recordHistory(TaskHistoryCommand.builder()
-                .taskId(id).userId(userId).action(TaskActionEnum.CLOSE)
-                .field("status").oldValue(String.valueOf(oldStatus)).newValue(String.valueOf(TaskStatusEnum.CLOSED.getCode())).build());
-        log.info("关闭任务：taskId={}", id);
+        transitionTask(id, TaskStatusEnum.DONE, TaskStatusEnum.CLOSED, TaskActionEnum.CLOSE,
+                task -> task.setCloseDate(java.time.LocalDateTime.now()),
+                (task, userId) -> log.info("关闭任务：taskId={}", id));
     }
 
     @Override
@@ -414,9 +370,7 @@ public class HfTaskServiceImpl implements HfTaskService {
         task.setStatus(TaskStatusEnum.CANCELLED.getCode());
         task.setCancelReason(request.getCancelReason());
         hfTaskRepository.updateById(task);
-        taskHistoryService.recordHistory(TaskHistoryCommand.builder()
-                .taskId(id).userId(userId).action(TaskActionEnum.CANCEL)
-                .field("status").oldValue(String.valueOf(oldStatus)).newValue(String.valueOf(TaskStatusEnum.CANCELLED.getCode())).build());
+        recordStatusHistory(id, userId, oldStatus, TaskStatusEnum.CANCELLED, TaskActionEnum.CANCEL);
         log.info("取消任务：taskId={}", id);
     }
 
@@ -491,29 +445,20 @@ public class HfTaskServiceImpl implements HfTaskService {
 
     @Override
     public Page<TaskVO> listMyTasks(TaskCondition condition) {
-        Page<HfTask> pageResult = hfTaskRepository.selectPageByAssigneeId(
-                new Page<>(condition.getPage(), condition.getPageSize()), condition);
-        Page<TaskVO> voPage = new Page<>(pageResult.getCurrent(), pageResult.getSize(), pageResult.getTotal());
-        voPage.setRecords(pageResult.getRecords().stream().map(this::toTaskVO).collect(Collectors.toList()));
-        return voPage;
+        Page<HfTask> pageResult = hfTaskRepository.selectPageByAssigneeId(new Page<>(condition.getPage(), condition.getPageSize()), condition);
+        return PageUtils.convertPage(pageResult, this::toTaskVO);
     }
 
     @Override
     public Page<TaskVO> listReportedTasks(TaskCondition condition) {
-        Page<HfTask> pageResult = hfTaskRepository.selectPageByReporterId(
-                new Page<>(condition.getPage(), condition.getPageSize()), condition);
-        Page<TaskVO> voPage = new Page<>(pageResult.getCurrent(), pageResult.getSize(), pageResult.getTotal());
-        voPage.setRecords(pageResult.getRecords().stream().map(this::toTaskVO).collect(Collectors.toList()));
-        return voPage;
+        Page<HfTask> pageResult = hfTaskRepository.selectPageByReporterId(new Page<>(condition.getPage(), condition.getPageSize()), condition);
+        return PageUtils.convertPage(pageResult, this::toTaskVO);
     }
 
     @Override
     public Page<TaskVO> listRelatedTasks(TaskCondition condition) {
-        Page<HfTask> pageResult = hfTaskRepository.selectPageByRelatedUserId(
-                new Page<>(condition.getPage(), condition.getPageSize()), condition);
-        Page<TaskVO> voPage = new Page<>(pageResult.getCurrent(), pageResult.getSize(), pageResult.getTotal());
-        voPage.setRecords(pageResult.getRecords().stream().map(this::toTaskVO).collect(Collectors.toList()));
-        return voPage;
+        Page<HfTask> pageResult = hfTaskRepository.selectPageByRelatedUserId(new Page<>(condition.getPage(), condition.getPageSize()), condition);
+        return PageUtils.convertPage(pageResult, this::toTaskVO);
     }
 
     /**
@@ -568,28 +513,16 @@ public class HfTaskServiceImpl implements HfTaskService {
 
     private void fillUserNames(TaskVO vo, HfTask task) {
         if (task.getAssigneeId() != null) {
-            SysUser assignee = sysUserRepository.selectById(task.getAssigneeId());
-            if (assignee != null) {
-                vo.setAssigneeName(assignee.getNickname() != null ? assignee.getNickname() : assignee.getUsername());
-            }
+            vo.setAssigneeName(sysUserRepository.getDisplayName(task.getAssigneeId()));
         }
         if (task.getReporterId() != null) {
-            SysUser reporter = sysUserRepository.selectById(task.getReporterId());
-            if (reporter != null) {
-                vo.setReporterName(reporter.getNickname() != null ? reporter.getNickname() : reporter.getUsername());
-            }
+            vo.setReporterName(sysUserRepository.getDisplayName(task.getReporterId()));
         }
         if (task.getDeveloperId() != null) {
-            SysUser developer = sysUserRepository.selectById(task.getDeveloperId());
-            if (developer != null) {
-                vo.setDeveloperName(developer.getNickname() != null ? developer.getNickname() : developer.getUsername());
-            }
+            vo.setDeveloperName(sysUserRepository.getDisplayName(task.getDeveloperId()));
         }
         if (task.getTesterId() != null) {
-            SysUser tester = sysUserRepository.selectById(task.getTesterId());
-            if (tester != null) {
-                vo.setTesterName(tester.getNickname() != null ? tester.getNickname() : tester.getUsername());
-            }
+            vo.setTesterName(sysUserRepository.getDisplayName(task.getTesterId()));
         }
     }
 
@@ -626,6 +559,46 @@ public class HfTaskServiceImpl implements HfTaskService {
             throw new BusinessException(ResultCode.TASK_NOT_FOUND);
         }
         return task;
+    }
+
+    /**
+     * 任务状态流转模板方法
+     *
+     * @param id             任务ID
+     * @param requiredStatus 要求的当前状态
+     * @param targetStatus   目标状态
+     * @param action         操作类型
+     * @param extraModifier  额外修改（可为null）
+     * @param postHandler    流转后处理（可为null）
+     */
+    private void transitionTask(Long id, TaskStatusEnum requiredStatus, TaskStatusEnum targetStatus,
+                                TaskActionEnum action, Consumer<HfTask> extraModifier,
+                                java.util.function.BiConsumer<HfTask, Long> postHandler) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        HfTask task = getTaskOrThrow(id);
+        if (!requiredStatus.matches(task.getStatus())) {
+            throw new BusinessException(ResultCode.TASK_STATUS_TRANSITION_INVALID);
+        }
+        Integer oldStatus = task.getStatus();
+        task.setStatus(targetStatus.getCode());
+        if (extraModifier != null) {
+            extraModifier.accept(task);
+        }
+        hfTaskRepository.updateById(task);
+        recordStatusHistory(id, userId, oldStatus, targetStatus, action);
+        if (postHandler != null) {
+            postHandler.accept(task, userId);
+        }
+    }
+
+    /**
+     * 记录状态变更历史
+     */
+    private void recordStatusHistory(Long taskId, Long userId, Integer oldStatus,
+                                     TaskStatusEnum newStatus, TaskActionEnum action) {
+        taskHistoryService.recordHistory(TaskHistoryCommand.builder()
+                .taskId(taskId).userId(userId).action(action)
+                .field("status").oldValue(String.valueOf(oldStatus)).newValue(String.valueOf(newStatus.getCode())).build());
     }
 
     private void validateReviewPermission(HfTask task, Long userId) {

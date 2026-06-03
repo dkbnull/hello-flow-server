@@ -3,7 +3,6 @@ package cn.wbnull.helloflow.data.repository;
 import cn.wbnull.helloflow.data.entity.HfFilter;
 import cn.wbnull.helloflow.data.mapper.HfFilterMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -15,13 +14,13 @@ import java.util.List;
  * @date 2026-05-27
  */
 @Repository
-@RequiredArgsConstructor
-public class HfFilterRepository {
+public class HfFilterRepository extends BaseRepository<HfFilterMapper, HfFilter> {
 
     private final HfFilterMapper hfFilterMapper;
 
-    public HfFilter selectById(Long id) {
-        return hfFilterMapper.selectById(id);
+    public HfFilterRepository(HfFilterMapper hfFilterMapper) {
+        super(hfFilterMapper);
+        this.hfFilterMapper = hfFilterMapper;
     }
 
     public List<HfFilter> selectByUserId(Long userId) {
@@ -29,17 +28,5 @@ public class HfFilterRepository {
         wrapper.eq(HfFilter::getUserId, userId)
                 .orderByDesc(HfFilter::getCreatedAt);
         return hfFilterMapper.selectList(wrapper);
-    }
-
-    public void insert(HfFilter filter) {
-        hfFilterMapper.insert(filter);
-    }
-
-    public void updateById(HfFilter filter) {
-        hfFilterMapper.updateById(filter);
-    }
-
-    public void deleteById(Long id) {
-        hfFilterMapper.deleteById(id);
     }
 }

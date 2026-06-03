@@ -7,13 +7,9 @@ import cn.wbnull.helloflow.app.service.AuthService;
 import cn.wbnull.helloflow.common.exception.BusinessException;
 import cn.wbnull.helloflow.common.model.ResultCode;
 import cn.wbnull.helloflow.data.entity.HfPosition;
-import cn.wbnull.helloflow.data.entity.SysRole;
 import cn.wbnull.helloflow.data.entity.SysUser;
-import cn.wbnull.helloflow.data.entity.SysUserRole;
 import cn.wbnull.helloflow.data.repository.HfPositionRepository;
-import cn.wbnull.helloflow.data.repository.SysRoleRepository;
 import cn.wbnull.helloflow.data.repository.SysUserRepository;
-import cn.wbnull.helloflow.data.repository.SysUserRoleRepository;
 import cn.wbnull.helloflow.security.config.JwtProperties;
 import cn.wbnull.helloflow.security.token.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
@@ -21,9 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * 认证服务实现
@@ -37,8 +31,6 @@ import java.util.stream.Collectors;
 public class AuthServiceImpl implements AuthService {
 
     private final SysUserRepository sysUserRepository;
-    private final SysUserRoleRepository sysUserRoleRepository;
-    private final SysRoleRepository sysRoleRepository;
     private final HfPositionRepository hfPositionRepository;
     private final JwtTokenProvider jwtTokenProvider;
     private final JwtProperties jwtProperties;
@@ -54,7 +46,7 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ResultCode.ACCOUNT_DISABLED);
         }
 
-        List<String> roles = getUserRoleCodes(user.getId());
+        List<String> roles = sysUserRepository.selectRoleCodesByUserId(user.getId());
 
         String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername(), roles);
         String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
@@ -93,7 +85,7 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ResultCode.USER_NOT_FOUND);
         }
 
-        List<String> roles = getUserRoleCodes(userId);
+        List<String> roles = sysUserRepository.selectRoleCodesByUserId(userId);
         String accessToken = jwtTokenProvider.generateAccessToken(userId, user.getUsername(), roles);
         String refreshToken = jwtTokenProvider.generateRefreshToken(userId);
 
@@ -103,18 +95,5 @@ public class AuthServiceImpl implements AuthService {
         response.setExpiresIn(jwtProperties.getAccessTokenExpiration());
         log.info("刷新令牌：userId={}", userId);
         return response;
-    }
-
-    /**
-     * 获取用户角色编码列表
-     */
-    private List<String> getUserRoleCodes(Long userId) {
-        List<SysUserRole> userRoles = sysUserRoleRepository.selectByUserId(userId);
-        if (userRoles.isEmpty()) {
-            return Collections.emptyList();
-        }
-        List<Long> roleIds = userRoles.stream().map(SysUserRole::getRoleId).collect(Collectors.toList());
-        List<SysRole> roles = sysRoleRepository.selectByIds(roleIds);
-        return roles.stream().map(SysRole::getCode).collect(Collectors.toList());
     }
 }

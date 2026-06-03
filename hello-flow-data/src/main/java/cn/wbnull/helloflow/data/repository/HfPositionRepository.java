@@ -3,7 +3,6 @@ package cn.wbnull.helloflow.data.repository;
 import cn.wbnull.helloflow.data.entity.HfPosition;
 import cn.wbnull.helloflow.data.mapper.HfPositionMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
@@ -16,13 +15,13 @@ import java.util.List;
  * @date 2026-05-27
  */
 @Repository
-@RequiredArgsConstructor
-public class HfPositionRepository {
+public class HfPositionRepository extends BaseRepository<HfPositionMapper, HfPosition> {
 
     private final HfPositionMapper hfPositionMapper;
 
-    public HfPosition selectById(Long id) {
-        return hfPositionMapper.selectById(id);
+    public HfPositionRepository(HfPositionMapper hfPositionMapper) {
+        super(hfPositionMapper);
+        this.hfPositionMapper = hfPositionMapper;
     }
 
     public List<HfPosition> selectByIds(Collection<Long> ids) {

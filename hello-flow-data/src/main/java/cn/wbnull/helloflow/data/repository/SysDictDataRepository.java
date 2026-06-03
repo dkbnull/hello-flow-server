@@ -4,7 +4,6 @@ import cn.wbnull.helloflow.data.entity.SysDictData;
 import cn.wbnull.helloflow.data.mapper.SysDictDataMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -14,13 +13,13 @@ import org.springframework.stereotype.Repository;
  * @date 2026-05-27
  */
 @Repository
-@RequiredArgsConstructor
-public class SysDictDataRepository {
+public class SysDictDataRepository extends BaseRepository<SysDictDataMapper, SysDictData> {
 
     private final SysDictDataMapper sysDictDataMapper;
 
-    public SysDictData selectById(Long id) {
-        return sysDictDataMapper.selectById(id);
+    public SysDictDataRepository(SysDictDataMapper sysDictDataMapper) {
+        super(sysDictDataMapper);
+        this.sysDictDataMapper = sysDictDataMapper;
     }
 
     public Page<SysDictData> selectPageByTypeId(Page<SysDictData> page, Long typeId) {
@@ -28,13 +27,5 @@ public class SysDictDataRepository {
         wrapper.eq(SysDictData::getTypeId, typeId);
         wrapper.orderByAsc(SysDictData::getSort);
         return sysDictDataMapper.selectPage(page, wrapper);
-    }
-
-    public void insert(SysDictData dictData) {
-        sysDictDataMapper.insert(dictData);
-    }
-
-    public void updateById(SysDictData dictData) {
-        sysDictDataMapper.updateById(dictData);
     }
 }

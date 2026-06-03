@@ -9,12 +9,11 @@ import cn.wbnull.helloflow.data.entity.SysDictData;
 import cn.wbnull.helloflow.data.entity.SysDictType;
 import cn.wbnull.helloflow.data.repository.SysDictDataRepository;
 import cn.wbnull.helloflow.data.repository.SysDictTypeRepository;
+import cn.wbnull.helloflow.data.util.PageUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-
-import java.util.stream.Collectors;
 
 /**
  * 字典服务实现
@@ -33,9 +32,7 @@ public class SysDictServiceImpl implements SysDictService {
     @Override
     public Page<DictTypeVO> listDictTypes(String keyword, Integer page, Integer pageSize) {
         Page<SysDictType> pageResult = sysDictTypeRepository.selectPageByCondition(new Page<>(page, pageSize), keyword);
-        Page<DictTypeVO> voPage = new Page<>(pageResult.getCurrent(), pageResult.getSize(), pageResult.getTotal());
-        voPage.setRecords(pageResult.getRecords().stream().map(this::toDictTypeVO).collect(Collectors.toList()));
-        return voPage;
+        return PageUtils.convertPage(pageResult, this::toDictTypeVO);
     }
 
     @Override
@@ -63,9 +60,7 @@ public class SysDictServiceImpl implements SysDictService {
     @Override
     public Page<DictDataVO> listDictData(Long typeId, Integer page, Integer pageSize) {
         Page<SysDictData> pageResult = sysDictDataRepository.selectPageByTypeId(new Page<>(page, pageSize), typeId);
-        Page<DictDataVO> voPage = new Page<>(pageResult.getCurrent(), pageResult.getSize(), pageResult.getTotal());
-        voPage.setRecords(pageResult.getRecords().stream().map(this::toDictDataVO).collect(Collectors.toList()));
-        return voPage;
+        return PageUtils.convertPage(pageResult, this::toDictDataVO);
     }
 
     @Override

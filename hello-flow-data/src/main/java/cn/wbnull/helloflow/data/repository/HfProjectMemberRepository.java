@@ -3,7 +3,6 @@ package cn.wbnull.helloflow.data.repository;
 import cn.wbnull.helloflow.data.entity.HfProjectMember;
 import cn.wbnull.helloflow.data.mapper.HfProjectMemberMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -15,10 +14,14 @@ import java.util.List;
  * @date 2026-05-27
  */
 @Repository
-@RequiredArgsConstructor
-public class HfProjectMemberRepository {
+public class HfProjectMemberRepository extends BaseRepository<HfProjectMemberMapper, HfProjectMember> {
 
     private final HfProjectMemberMapper hfProjectMemberMapper;
+
+    public HfProjectMemberRepository(HfProjectMemberMapper hfProjectMemberMapper) {
+        super(hfProjectMemberMapper);
+        this.hfProjectMemberMapper = hfProjectMemberMapper;
+    }
 
     public List<HfProjectMember> selectByUserId(Long userId) {
         LambdaQueryWrapper<HfProjectMember> wrapper = new LambdaQueryWrapper<>();
@@ -37,10 +40,6 @@ public class HfProjectMemberRepository {
         wrapper.eq(HfProjectMember::getProjectId, projectId)
                 .eq(HfProjectMember::getUserId, userId);
         return hfProjectMemberMapper.selectOne(wrapper);
-    }
-
-    public void insert(HfProjectMember member) {
-        hfProjectMemberMapper.insert(member);
     }
 
     public void deleteByProjectIdAndUserId(Long projectId, Long userId) {

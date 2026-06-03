@@ -3,7 +3,6 @@ package cn.wbnull.helloflow.data.repository;
 import cn.wbnull.helloflow.data.entity.SysUserRole;
 import cn.wbnull.helloflow.data.mapper.SysUserRoleMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -15,19 +14,19 @@ import java.util.List;
  * @date 2026-05-27
  */
 @Repository
-@RequiredArgsConstructor
-public class SysUserRoleRepository {
+public class SysUserRoleRepository extends BaseRepository<SysUserRoleMapper, SysUserRole> {
 
     private final SysUserRoleMapper sysUserRoleMapper;
+
+    public SysUserRoleRepository(SysUserRoleMapper sysUserRoleMapper) {
+        super(sysUserRoleMapper);
+        this.sysUserRoleMapper = sysUserRoleMapper;
+    }
 
     public List<SysUserRole> selectByUserId(Long userId) {
         LambdaQueryWrapper<SysUserRole> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SysUserRole::getUserId, userId);
         return sysUserRoleMapper.selectList(wrapper);
-    }
-
-    public void insert(SysUserRole userRole) {
-        sysUserRoleMapper.insert(userRole);
     }
 
     public void deleteByUserId(Long userId) {

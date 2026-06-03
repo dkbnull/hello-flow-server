@@ -3,7 +3,6 @@ package cn.wbnull.helloflow.data.repository;
 import cn.wbnull.helloflow.data.entity.HfTaskRelation;
 import cn.wbnull.helloflow.data.mapper.HfTaskRelationMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -15,10 +14,14 @@ import java.util.List;
  * @date 2026-05-27
  */
 @Repository
-@RequiredArgsConstructor
-public class HfTaskRelationRepository {
+public class HfTaskRelationRepository extends BaseRepository<HfTaskRelationMapper, HfTaskRelation> {
 
     private final HfTaskRelationMapper hfTaskRelationMapper;
+
+    public HfTaskRelationRepository(HfTaskRelationMapper hfTaskRelationMapper) {
+        super(hfTaskRelationMapper);
+        this.hfTaskRelationMapper = hfTaskRelationMapper;
+    }
 
     public List<HfTaskRelation> selectByTaskId(Long taskId) {
         LambdaQueryWrapper<HfTaskRelation> wrapper = new LambdaQueryWrapper<>();
@@ -32,13 +35,5 @@ public class HfTaskRelationRepository {
                 .eq(HfTaskRelation::getRelatedTaskId, relatedTaskId)
                 .eq(HfTaskRelation::getRelationType, relationType);
         return hfTaskRelationMapper.selectOne(wrapper);
-    }
-
-    public void insert(HfTaskRelation relation) {
-        hfTaskRelationMapper.insert(relation);
-    }
-
-    public void deleteById(Long id) {
-        hfTaskRelationMapper.deleteById(id);
     }
 }

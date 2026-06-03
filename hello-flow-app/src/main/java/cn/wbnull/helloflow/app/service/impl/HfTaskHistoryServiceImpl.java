@@ -58,7 +58,7 @@ public class HfTaskHistoryServiceImpl implements HfTaskHistoryService {
 
         SysUser user = sysUserRepository.selectById(history.getUserId());
         if (user != null) {
-            vo.setUsername(user.getNickname() != null ? user.getNickname() : user.getUsername());
+            vo.setUsername(sysUserRepository.getDisplayName(history.getUserId()));
         }
 
         vo.setDescription(buildDescription(actionName, history.getField(),
@@ -111,9 +111,9 @@ public class HfTaskHistoryServiceImpl implements HfTaskHistoryService {
                 return value;
             case "assigneeId":
                 try {
-                    SysUser user = sysUserRepository.selectById(Long.parseLong(value));
-                    if (user != null) {
-                        return user.getNickname() != null ? user.getNickname() : user.getUsername();
+                    String displayName = sysUserRepository.getDisplayName(Long.parseLong(value));
+                    if (displayName != null) {
+                        return displayName;
                     }
                 } catch (Exception ignored) {
                 }

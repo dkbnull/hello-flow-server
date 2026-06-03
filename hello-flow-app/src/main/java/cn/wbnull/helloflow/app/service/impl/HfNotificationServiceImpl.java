@@ -8,6 +8,7 @@ import cn.wbnull.helloflow.data.entity.HfNotification;
 import cn.wbnull.helloflow.data.entity.HfUserNotificationSetting;
 import cn.wbnull.helloflow.data.repository.HfNotificationRepository;
 import cn.wbnull.helloflow.data.repository.HfUserNotificationSettingRepository;
+import cn.wbnull.helloflow.data.util.PageUtils;
 import cn.wbnull.helloflow.security.util.SecurityUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +16,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * 通知服务实现
@@ -35,9 +35,7 @@ public class HfNotificationServiceImpl implements HfNotificationService {
     public Page<NotificationVO> listNotifications(Integer isRead, Integer page, Integer pageSize) {
         Long userId = SecurityUtils.getCurrentUserId();
         Page<HfNotification> pageResult = hfNotificationRepository.selectPageByCondition(new Page<>(page, pageSize), userId, isRead);
-        Page<NotificationVO> voPage = new Page<>(pageResult.getCurrent(), pageResult.getSize(), pageResult.getTotal());
-        voPage.setRecords(pageResult.getRecords().stream().map(this::toNotificationVO).collect(Collectors.toList()));
-        return voPage;
+        return PageUtils.convertPage(pageResult, this::toNotificationVO);
     }
 
     @Override

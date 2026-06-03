@@ -4,7 +4,6 @@ import cn.wbnull.helloflow.data.entity.SysDictType;
 import cn.wbnull.helloflow.data.mapper.SysDictTypeMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -14,13 +13,13 @@ import org.springframework.stereotype.Repository;
  * @date 2026-05-27
  */
 @Repository
-@RequiredArgsConstructor
-public class SysDictTypeRepository {
+public class SysDictTypeRepository extends BaseRepository<SysDictTypeMapper, SysDictType> {
 
     private final SysDictTypeMapper sysDictTypeMapper;
 
-    public SysDictType selectById(Long id) {
-        return sysDictTypeMapper.selectById(id);
+    public SysDictTypeRepository(SysDictTypeMapper sysDictTypeMapper) {
+        super(sysDictTypeMapper);
+        this.sysDictTypeMapper = sysDictTypeMapper;
     }
 
     public Page<SysDictType> selectPageByCondition(Page<SysDictType> page, String keyword) {
@@ -30,13 +29,5 @@ public class SysDictTypeRepository {
         }
         wrapper.orderByDesc(SysDictType::getCreatedAt);
         return sysDictTypeMapper.selectPage(page, wrapper);
-    }
-
-    public void insert(SysDictType dictType) {
-        sysDictTypeMapper.insert(dictType);
-    }
-
-    public void updateById(SysDictType dictType) {
-        sysDictTypeMapper.updateById(dictType);
     }
 }
