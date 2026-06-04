@@ -1,7 +1,7 @@
 package cn.wbnull.helloflow.app.service;
 
 import cn.wbnull.helloflow.app.dto.project.ProjectCreateRequest;
-import cn.wbnull.helloflow.app.dto.project.ProjectQueryRequest;
+import cn.wbnull.helloflow.app.dto.project.ProjectQuery;
 import cn.wbnull.helloflow.app.dto.project.ProjectUpdateRequest;
 import cn.wbnull.helloflow.app.dto.project.ProjectVO;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -34,7 +34,7 @@ public interface HfProjectService {
     /**
      * 获取项目列表
      */
-    Page<ProjectVO> listProjects(ProjectQueryRequest query);
+    Page<ProjectVO> listProjects(ProjectQuery query);
 
     /**
      * 获取项目成员列表（按职位筛选）

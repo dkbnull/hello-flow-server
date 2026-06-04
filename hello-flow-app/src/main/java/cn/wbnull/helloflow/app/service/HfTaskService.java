@@ -37,7 +37,7 @@ public interface HfTaskService {
     /**
      * 任务列表（支持多维度检索）
      */
-    Page<TaskVO> listTasks(TaskQueryRequest query);
+    Page<TaskVO> listTasks(TaskQuery query);
 
     /**
      * 分配任务

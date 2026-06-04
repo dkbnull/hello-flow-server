@@ -1,7 +1,7 @@
 package cn.wbnull.helloflow.app.controller;
 
 import cn.wbnull.helloflow.app.dto.project.ProjectCreateRequest;
-import cn.wbnull.helloflow.app.dto.project.ProjectQueryRequest;
+import cn.wbnull.helloflow.app.dto.project.ProjectQuery;
 import cn.wbnull.helloflow.app.dto.project.ProjectUpdateRequest;
 import cn.wbnull.helloflow.app.dto.project.ProjectVO;
 import cn.wbnull.helloflow.app.service.HfProjectService;
@@ -32,7 +32,7 @@ public class ProjectController {
 
     @GetMapping
     @Operation(summary = "项目列表")
-    public Result<Page<ProjectVO>> listProjects(ProjectQueryRequest query) {
+    public Result<Page<ProjectVO>> listProjects(ProjectQuery query) {
         return Result.success(hfProjectService.listProjects(query));
     }
 

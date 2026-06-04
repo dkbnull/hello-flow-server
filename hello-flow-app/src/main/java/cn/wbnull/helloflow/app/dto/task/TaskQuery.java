@@ -3,13 +3,13 @@ package cn.wbnull.helloflow.app.dto.task;
 import lombok.Data;
 
 /**
- * 任务查询请求
+ * 任务查询条件
  *
  * @author null
  * @date 2026-05-30
  */
 @Data
-public class TaskQueryRequest {
+public class TaskQuery {
 
     private Long projectId;
 

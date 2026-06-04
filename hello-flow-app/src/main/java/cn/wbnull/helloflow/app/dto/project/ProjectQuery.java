@@ -3,13 +3,13 @@ package cn.wbnull.helloflow.app.dto.project;
 import lombok.Data;
 
 /**
- * 项目查询请求
+ * 项目查询条件
  *
  * @author null
  * @date 2026-05-30
  */
 @Data
-public class ProjectQueryRequest {
+public class ProjectQuery {
 
     private String keyword;
 

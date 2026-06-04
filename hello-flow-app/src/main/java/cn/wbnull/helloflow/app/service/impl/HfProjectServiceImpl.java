@@ -2,7 +2,7 @@ package cn.wbnull.helloflow.app.service.impl;
 
 import cn.wbnull.helloflow.app.dto.mapstruct.ProjectMapper;
 import cn.wbnull.helloflow.app.dto.project.ProjectCreateRequest;
-import cn.wbnull.helloflow.app.dto.project.ProjectQueryRequest;
+import cn.wbnull.helloflow.app.dto.project.ProjectQuery;
 import cn.wbnull.helloflow.app.dto.project.ProjectUpdateRequest;
 import cn.wbnull.helloflow.app.dto.project.ProjectVO;
 import cn.wbnull.helloflow.app.service.HfProjectService;
@@ -123,7 +123,7 @@ public class HfProjectServiceImpl implements HfProjectService {
     }
 
     @Override
-    public Page<ProjectVO> listProjects(ProjectQueryRequest query) {
+    public Page<ProjectVO> listProjects(ProjectQuery query) {
         query.setUserId(SecurityUtils.getCurrentUserId());
         query.setAdmin(SecurityUtils.isAdmin());
         List<Long> projectIds = null;

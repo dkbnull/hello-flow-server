@@ -24,11 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -188,7 +184,7 @@ public class HfTaskServiceImpl implements HfTaskService {
     }
 
     @Override
-    public Page<TaskVO> listTasks(TaskQueryRequest query) {
+    public Page<TaskVO> listTasks(TaskQuery query) {
         TaskCondition condition = new TaskCondition();
         BeanCopyUtils.copyNonNullProperties(query, condition);
         Page<HfTask> pageResult = hfTaskRepository.selectPageByCondition(

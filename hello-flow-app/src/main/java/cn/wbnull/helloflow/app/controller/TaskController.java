@@ -7,8 +7,8 @@ import cn.wbnull.helloflow.app.service.HfCommentService;
 import cn.wbnull.helloflow.app.service.HfTaskHistoryService;
 import cn.wbnull.helloflow.app.service.HfTaskService;
 import cn.wbnull.helloflow.common.model.Result;
-import cn.wbnull.helloflow.security.util.SecurityUtils;
 import cn.wbnull.helloflow.data.condition.TaskCondition;
+import cn.wbnull.helloflow.security.util.SecurityUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -36,7 +36,7 @@ public class TaskController {
 
     @GetMapping("/projects/{projectId}/tasks")
     @Operation(summary = "任务列表")
-    public Result<Page<TaskVO>> listTasks(@PathVariable Long projectId, TaskQueryRequest query) {
+    public Result<Page<TaskVO>> listTasks(@PathVariable Long projectId, TaskQuery query) {
         query.setProjectId(projectId);
         return Result.success(hfTaskService.listTasks(query));
     }
