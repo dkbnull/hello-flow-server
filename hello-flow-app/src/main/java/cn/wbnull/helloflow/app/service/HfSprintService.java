@@ -17,7 +17,7 @@ public interface HfSprintService {
     /**
      * 创建Sprint
      */
-    SprintVO createSprint(Long projectId, SprintCreateRequest request);
+    SprintVO createSprint(SprintCreateRequest request);
 
     /**
      * 更新Sprint

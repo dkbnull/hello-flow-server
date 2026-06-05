@@ -18,49 +18,49 @@ import org.springframework.web.bind.annotation.*;
  * @date 2026-05-26
  */
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/notifications")
 @RequiredArgsConstructor
 @Tag(name = "通知管理", description = "通知列表、已读、通知设置")
 public class NotificationController {
 
     private final HfNotificationService hfNotificationService;
 
-    @GetMapping("/notifications")
+    @GetMapping
     @Operation(summary = "通知列表")
     public Result<Page<NotificationVO>> listNotifications(
             @RequestParam(required = false) Integer isRead,
             @RequestParam(defaultValue = "1") Integer page,
-            @RequestParam(defaultValue = "20") Integer pageSize) {
+            @RequestParam(defaultValue = "10") Integer pageSize) {
         return Result.success(hfNotificationService.listNotifications(isRead, page, pageSize));
     }
 
-    @GetMapping("/notifications/unread-count")
+    @GetMapping("/unread-count")
     @Operation(summary = "未读数量")
     public Result<Long> getUnreadCount() {
         return Result.success(hfNotificationService.getUnreadCount());
     }
 
-    @PutMapping("/notifications/{id}/read")
+    @PutMapping("/{id}/read")
     @Operation(summary = "标记已读")
     public Result<Void> markRead(@PathVariable Long id) {
         hfNotificationService.markRead(id);
         return Result.success();
     }
 
-    @PutMapping("/notifications/read-all")
+    @PutMapping("/read-all")
     @Operation(summary = "全部已读")
     public Result<Void> markAllRead() {
         hfNotificationService.markAllRead();
         return Result.success();
     }
 
-    @GetMapping("/notification-settings")
+    @GetMapping("/settings")
     @Operation(summary = "获取通知设置")
     public Result<NotificationVO.SettingVO> getSetting() {
         return Result.success(hfNotificationService.getSetting());
     }
 
-    @PutMapping("/notification-settings")
+    @PutMapping("/settings")
     @Operation(summary = "更新通知设置")
     public Result<Void> updateSetting(@Valid @RequestBody NotificationSettingRequest request) {
         hfNotificationService.updateSetting(request);

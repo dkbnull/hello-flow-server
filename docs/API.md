@@ -38,7 +38,7 @@
     "data": {
         "records": [],
         "total": 100,
-        "size": 20,
+        "size": 10,
         "current": 1,
         "pages": 5
     }
@@ -179,7 +179,7 @@
 | status | int | 否 | 状态（0-禁用 1-启用） |
 | positionId | long | 否 | 职位ID |
 | page | int | 否 | 页码，默认1 |
-| pageSize | int | 否 | 每页数量，默认20 |
+| pageSize | int | 否 | 每页数量，默认10 |
 
 **响应参数**（分页）：
 
@@ -339,7 +339,7 @@
 |--------|------|------|------|
 | keyword | string | 否 | 搜索关键词 |
 | page | int | 否 | 页码，默认1 |
-| pageSize | int | 否 | 每页数量，默认20 |
+| pageSize | int | 否 | 每页数量，默认10 |
 
 **响应参数**（分页）：
 
@@ -453,7 +453,7 @@
 | keyword | string | 否 | 搜索关键词 |
 | status | int | 否 | 状态（0-归档 1-进行中） |
 | page | int | 否 | 页码，默认1 |
-| pageSize | int | 否 | 每页数量，默认20 |
+| pageSize | int | 否 | 每页数量，默认10 |
 
 **响应参数**（分页）：
 
@@ -570,8 +570,14 @@
 ### 6.1 Sprint列表
 
 - **请求方法**：GET
-- **请求路径**：`/api/projects/{projectId}/sprints`
+- **请求路径**：`/api/sprints`
 - **认证方式**：Bearer Token
+
+**请求参数**（Query）：
+
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| projectId | long | 是 | 项目ID |
 
 **响应参数**：
 
@@ -590,13 +596,14 @@
 ### 6.2 创建Sprint
 
 - **请求方法**：POST
-- **请求路径**：`/api/projects/{projectId}/sprints`
+- **请求路径**：`/api/sprints`
 - **认证方式**：Bearer Token
 
 **请求参数**（Body - JSON）：
 
 | 参数名 | 类型 | 必填 | 说明 |
 |--------|------|------|------|
+| projectId | long | 是 | 项目ID |
 | name | string | 是 | Sprint名称 |
 | goal | string | 否 | Sprint目标 |
 | startDate | string | 否 | 开始日期（yyyy-MM-dd） |
@@ -636,13 +643,14 @@
 ### 7.1 任务列表
 
 - **请求方法**：GET
-- **请求路径**：`/api/projects/{projectId}/tasks`
+- **请求路径**：`/api/tasks`
 - **认证方式**：Bearer Token
 
 **请求参数**（Query）：
 
 | 参数名 | 类型 | 必填 | 说明 |
 |--------|------|------|------|
+| projectId | long | 否 | 项目ID |
 | status | int | 否 | 状态（1-未开始 2-进行中 3-待审查 4-待测试 5-已完成 6-已关闭 7-取消） |
 | type | int | 否 | 类型（1-需求 2-完善 3-缺陷） |
 | priority | int | 否 | 优先级（1-最低 2-低 3-中 4-高 5-最高） |
@@ -655,7 +663,7 @@
 | createdAtStart | string | 否 | 创建日期起始（yyyy-MM-dd） |
 | createdAtEnd | string | 否 | 创建日期结束（yyyy-MM-dd） |
 | page | int | 否 | 页码，默认1 |
-| pageSize | int | 否 | 每页数量，默认20 |
+| pageSize | int | 否 | 每页数量，默认10 |
 
 **响应参数**（分页）：
 
@@ -687,13 +695,14 @@
 ### 7.2 创建任务
 
 - **请求方法**：POST
-- **请求路径**：`/api/projects/{projectId}/tasks`
+- **请求路径**：`/api/tasks`
 - **认证方式**：Bearer Token
 
 **请求参数**（Body - JSON）：
 
 | 参数名 | 类型 | 必填 | 说明 |
 |--------|------|------|------|
+| projectId | long | 是 | 项目ID |
 | title | string | 是 | 标题 |
 | description | string | 否 | 描述（富文本） |
 | type | int | 否 | 类型（1-需求 2-完善 3-缺陷），默认1 |
@@ -754,87 +763,34 @@
 |--------|------|------|------|
 | assigneeId | long | 否 | 指派人ID |
 
-### 7.7 开始开发
+### 7.7 任务状态流转
 
 - **请求方法**：POST
-- **请求路径**：`/api/tasks/{id}/start`
+- **请求路径**：`/api/tasks/{id}/transition`
 - **认证方式**：Bearer Token
-
-**前置条件**：任务状态为「未开始」
-
-### 7.8 开发完成
-
-- **请求方法**：POST
-- **请求路径**：`/api/tasks/{id}/complete-dev`
-- **认证方式**：Bearer Token
-
-**前置条件**：任务状态为「进行中」
-
-### 7.9 审查通过
-
-- **请求方法**：POST
-- **请求路径**：`/api/tasks/{id}/review-pass`
-- **认证方式**：Bearer Token
-
-**前置条件**：任务状态为「待审查」，项目经理不允许审查，开发工程师不能审查自己的任务（项目中只有自己一个开发工程师时除外）
-
-### 7.10 审查不通过
-
-- **请求方法**：POST
-- **请求路径**：`/api/tasks/{id}/review-reject`
-- **认证方式**：Bearer Token
-
-**前置条件**：任务状态为「待审查」，项目经理不允许审查，开发工程师不能审查自己的任务（项目中只有自己一个开发工程师时除外）
-
-### 7.11 测试通过
-
-- **请求方法**：POST
-- **请求路径**：`/api/tasks/{id}/test-pass`
-- **认证方式**：Bearer Token
-
-**前置条件**：任务状态为「待测试」
-
-### 7.12 测试不通过
-
-- **请求方法**：POST
-- **请求路径**：`/api/tasks/{id}/test-reject`
-- **认证方式**：Bearer Token
-
-**前置条件**：任务状态为「待测试」
-
-**说明**：测试不通过后，任务状态回退为「进行中」，指派回开发工程师，并通知开发工程师修改。
-
-### 7.13 重新打开
-
-- **请求方法**：POST
-- **请求路径**：`/api/tasks/{id}/reopen`
-- **认证方式**：Bearer Token
-
-**前置条件**：任务状态为「已完成」或「已关闭」
-
-### 7.14 关闭任务
-
-- **请求方法**：POST
-- **请求路径**：`/api/tasks/{id}/close`
-- **认证方式**：Bearer Token
-
-**前置条件**：任务状态为「已完成」
-
-### 7.15 取消任务
-
-- **请求方法**：POST
-- **请求路径**：`/api/tasks/{id}/cancel`
-- **认证方式**：Bearer Token
-
-**前置条件**：任务状态为「未开始」或「进行中」
 
 **请求参数**（Body - JSON）：
 
 | 参数名 | 类型 | 必填 | 说明 |
 |--------|------|------|------|
-| cancelReason | string | 否 | 取消原因 |
+| targetStatus | int | 是 | 目标状态（见下表） |
+| cancelReason | string | 否 | 取消原因（仅取消时填写） |
 
-### 7.16 标记延期
+**状态流转映射**：
+
+| targetStatus | 含义 | 前置条件 |
+|-------------|------|---------|
+| 1（未开始） | 重新打开 | 当前状态为「已完成」或「已关闭」 |
+| 2（进行中） | 开始开发 / 审查不通过 / 测试不通过 | 当前状态为「未开始」→开始开发；「待审查」→审查不通过；「待测试」→测试不通过 |
+| 3（待审查） | 开发完成 | 当前状态为「进行中」 |
+| 4（待测试） | 审查通过 | 当前状态为「待审查」，项目经理不允许审查，开发工程师不能审查自己的任务（项目中只有自己一个开发工程师时除外） |
+| 5（已完成） | 测试通过 | 当前状态为「待测试」 |
+| 6（已关闭） | 关闭任务 | 当前状态为「已完成」 |
+| 7（取消） | 取消任务 | 当前状态为「未开始」或「进行中」 |
+
+**说明**：`targetStatus=2` 时，系统根据当前状态自动判断具体操作（开始开发/审查不通过/测试不通过）。
+
+### 7.8 标记延期
 
 - **请求方法**：POST
 - **请求路径**：`/api/tasks/{id}/delay`
@@ -848,13 +804,13 @@
 |--------|------|------|------|
 | delayReason | string | 否 | 延期原因 |
 
-### 7.17 子任务列表
+### 7.9 子任务列表
 
 - **请求方法**：GET
 - **请求路径**：`/api/tasks/{id}/subtasks`
 - **认证方式**：Bearer Token
 
-### 7.18 创建子任务
+### 7.10 创建子任务
 
 - **请求方法**：POST
 - **请求路径**：`/api/tasks/{id}/subtasks`
@@ -862,7 +818,7 @@
 
 **请求参数**：同创建任务
 
-### 7.19 任务关联列表
+### 7.11 任务关联列表
 
 - **请求方法**：GET
 - **请求路径**：`/api/tasks/{id}/relations`
@@ -877,7 +833,7 @@
 | data[].relatedTaskTitle | string | 关联任务标题 |
 | data[].relationType | int | 关联类型（1-关联 2-依赖 3-重复） |
 
-### 7.20 添加任务关联
+### 7.12 添加任务关联
 
 - **请求方法**：POST
 - **请求路径**：`/api/tasks/{id}/relations`
@@ -890,13 +846,13 @@
 | relatedTaskId | long | 是 | 关联任务ID |
 | relationType | int | 是 | 关联类型（1-关联 2-依赖 3-重复） |
 
-### 7.21 删除任务关联
+### 7.13 删除任务关联
 
 - **请求方法**：DELETE
 - **请求路径**：`/api/tasks/{taskId}/relations/{relationId}`
 - **认证方式**：Bearer Token
 
-### 7.22 我的任务
+### 7.14 我负责的任务
 
 - **请求方法**：GET
 - **请求路径**：`/api/tasks/mine`
@@ -907,29 +863,30 @@
 | 参数名 | 类型 | 必填 | 说明 |
 |--------|------|------|------|
 | status | int | 否 | 状态（1-未开始 2-进行中 3-待审查 4-待测试 5-已完成 6-已关闭 7-取消） |
-| type | int | 否 | 类型（1-需求 2-Bug 3-改进 4-任务） |
-| priority | int | 否 | 优先级（1-低 2-中 3-高 4-紧急） |
-| keyword | string | 否 | 关键词（模糊搜索标题） |
+| type | int | 否 | 类型（1-需求 2-完善 3-缺陷） |
+| priority | int | 否 | 优先级（1-最低 2-低 3-中 4-高 5-最高） |
+| isDelayed | int | 否 | 延期标记（0-否 1-是） |
 | page | int | 否 | 页码，默认1 |
-| pageSize | int | 否 | 每页数量，默认20 |
+| pageSize | int | 否 | 每页数量，默认10 |
 
-### 7.23 我创建的任务
+**说明**：返回当前用户作为负责人（assigneeId）、开发工程师（developerId）、测试工程师（testerId）中任一角色的任务列表。
 
-- **请求方法**：GET
-- **请求路径**：`/api/tasks/reported`
-- **认证方式**：Bearer Token
+**响应参数**：同任务列表（分页）
 
-**请求参数**：同我的任务
-
-### 7.24 与我相关的任务
+### 7.15 待我审查的任务
 
 - **请求方法**：GET
-- **请求路径**：`/api/tasks/related`
+- **请求路径**：`/api/tasks/pending-review`
 - **认证方式**：Bearer Token
 
-**请求参数**：同我的任务
+**请求参数**（Query）：
 
-**说明**：返回当前用户作为负责人（assigneeId）、创建人（reporterId）、开发工程师（developerId）、测试工程师（testerId）中任一角色的任务列表。
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| page | int | 否 | 页码，默认1 |
+| pageSize | int | 否 | 每页数量，默认10 |
+
+**说明**：返回当前用户参与的项目中，状态为「待审查」且非自己开发的任务列表。
 
 **响应参数**：同任务列表（分页）
 
@@ -1000,7 +957,7 @@
 ### 10.1 项目看板
 
 - **请求方法**：GET
-- **请求路径**：`/api/projects/{projectId}/board`
+- **请求路径**：`/api/stats/projects/{projectId}/board`
 - **认证方式**：Bearer Token
 
 **响应参数**：
@@ -1020,7 +977,7 @@
 ### 10.2 Sprint看板
 
 - **请求方法**：GET
-- **请求路径**：`/api/sprints/{sprintId}/board`
+- **请求路径**：`/api/stats/sprints/{sprintId}/board`
 - **认证方式**：Bearer Token
 
 **响应参数**：同项目看板
@@ -1028,7 +985,7 @@
 ### 10.3 项目概览统计
 
 - **请求方法**：GET
-- **请求路径**：`/api/projects/{projectId}/stats/overview`
+- **请求路径**：`/api/stats/projects/{projectId}/overview`
 - **认证方式**：Bearer Token
 
 **响应参数**：
@@ -1043,7 +1000,7 @@
 ### 10.4 燃尽图数据
 
 - **请求方法**：GET
-- **请求路径**：`/api/projects/{projectId}/stats/burndown`
+- **请求路径**：`/api/stats/projects/{projectId}/burndown`
 - **认证方式**：Bearer Token
 
 **请求参数**（Query）：
@@ -1066,7 +1023,7 @@
 ### 10.5 成员工作量统计
 
 - **请求方法**：GET
-- **请求路径**：`/api/projects/{projectId}/stats/members`
+- **请求路径**：`/api/stats/projects/{projectId}/members`
 - **认证方式**：Bearer Token
 
 **响应参数**：
@@ -1084,7 +1041,7 @@
 ### 10.6 缺陷统计
 
 - **请求方法**：GET
-- **请求路径**：`/api/projects/{projectId}/stats/defects`
+- **请求路径**：`/api/stats/projects/{projectId}/defects`
 - **认证方式**：Bearer Token
 
 **响应参数**：
@@ -1112,7 +1069,7 @@
 |--------|------|------|------|
 | isRead | int | 否 | 已读状态（0-未读 1-已读） |
 | page | int | 否 | 页码，默认1 |
-| pageSize | int | 否 | 每页数量，默认20 |
+| pageSize | int | 否 | 每页数量，默认10 |
 
 **响应参数**（分页）：
 
@@ -1154,7 +1111,7 @@
 ### 11.5 获取通知设置
 
 - **请求方法**：GET
-- **请求路径**：`/api/notification-settings`
+- **请求路径**：`/api/notifications/settings`
 - **认证方式**：Bearer Token
 
 **响应参数**：
@@ -1167,7 +1124,7 @@
 ### 11.6 更新通知设置
 
 - **请求方法**：PUT
-- **请求路径**：`/api/notification-settings`
+- **请求路径**：`/api/notifications/settings`
 - **认证方式**：Bearer Token
 
 **请求参数**（Body - JSON）：

@@ -17,7 +17,7 @@ public class ProjectQuery {
 
     private Integer page = 1;
 
-    private Integer pageSize = 20;
+    private Integer pageSize = 10;
 
     private Long userId;
 

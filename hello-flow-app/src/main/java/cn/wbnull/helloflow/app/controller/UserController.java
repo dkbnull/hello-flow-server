@@ -32,7 +32,7 @@ public class UserController {
             @RequestParam(required = false) Integer status,
             @RequestParam(required = false) Long positionId,
             @RequestParam(defaultValue = "1") Integer page,
-            @RequestParam(defaultValue = "20") Integer pageSize) {
+            @RequestParam(defaultValue = "10") Integer pageSize) {
         return Result.success(sysUserService.listUsers(keyword, status, positionId, page, pageSize));
     }
 

@@ -21,7 +21,7 @@ import java.util.List;
  * @date 2026-05-26
  */
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/stats")
 @RequiredArgsConstructor
 @Tag(name = "看板与统计", description = "看板数据、项目统计、燃尽图")
 public class BoardStatsController {
@@ -40,25 +40,25 @@ public class BoardStatsController {
         return Result.success(boardStatsService.getSprintBoard(sprintId));
     }
 
-    @GetMapping("/projects/{projectId}/stats/overview")
+    @GetMapping("/projects/{projectId}/overview")
     @Operation(summary = "项目概览统计")
     public Result<ProjectStatsVO> getProjectStats(@PathVariable Long projectId) {
         return Result.success(boardStatsService.getProjectStats(projectId));
     }
 
-    @GetMapping("/projects/{projectId}/stats/burndown")
+    @GetMapping("/projects/{projectId}/burndown")
     @Operation(summary = "燃尽图数据")
     public Result<BurndownVO> getBurndown(@PathVariable Long projectId, @RequestParam Long sprintId) {
         return Result.success(boardStatsService.getBurndown(projectId, sprintId));
     }
 
-    @GetMapping("/projects/{projectId}/stats/members")
+    @GetMapping("/projects/{projectId}/members")
     @Operation(summary = "成员工作量统计")
     public Result<List<MemberWorkloadVO>> getMemberWorkload(@PathVariable Long projectId) {
         return Result.success(boardStatsService.getMemberWorkload(projectId));
     }
 
-    @GetMapping("/projects/{projectId}/stats/defects")
+    @GetMapping("/projects/{projectId}/defects")
     @Operation(summary = "缺陷统计")
     public Result<DefectStatsVO> getDefectStats(@PathVariable Long projectId) {
         return Result.success(boardStatsService.getDefectStats(projectId));

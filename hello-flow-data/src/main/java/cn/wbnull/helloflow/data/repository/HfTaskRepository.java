@@ -2,6 +2,7 @@ package cn.wbnull.helloflow.data.repository;
 
 import cn.wbnull.helloflow.data.condition.TaskCondition;
 import cn.wbnull.helloflow.data.entity.HfTask;
+import cn.wbnull.helloflow.data.enums.TaskStatusEnum;
 import cn.wbnull.helloflow.data.mapper.HfTaskMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -83,30 +84,14 @@ public class HfTaskRepository extends BaseRepository<HfTaskMapper, HfTask> {
         return hfTaskMapper.selectPage(page, wrapper);
     }
 
-    public Page<HfTask> selectPageByAssigneeId(Page<HfTask> page, TaskCondition condition) {
-        LambdaQueryWrapper<HfTask> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(HfTask::getAssigneeId, condition.getAssigneeId());
-        applyCommonConditions(wrapper, condition);
-        applyDateConditions(wrapper, condition);
-        wrapper.orderByDesc(HfTask::getCreatedAt);
-        return hfTaskMapper.selectPage(page, wrapper);
-    }
-
-    public Page<HfTask> selectPageByReporterId(Page<HfTask> page, TaskCondition condition) {
-        LambdaQueryWrapper<HfTask> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(HfTask::getReporterId, condition.getReporterId());
-        applyCommonConditions(wrapper, condition);
-        applyDateConditions(wrapper, condition);
-        wrapper.orderByDesc(HfTask::getCreatedAt);
-        return hfTaskMapper.selectPage(page, wrapper);
-    }
-
-    public Page<HfTask> selectPageByRelatedUserId(Page<HfTask> page, TaskCondition condition) {
+    /**
+     * 查询我负责的任务（负责人/开发工程师/测试工程师任一匹配）
+     */
+    public Page<HfTask> selectPageByMine(Page<HfTask> page, TaskCondition condition) {
         LambdaQueryWrapper<HfTask> wrapper = new LambdaQueryWrapper<>();
         Long userId = condition.getAssigneeId();
         wrapper.and(w -> w
                 .eq(HfTask::getAssigneeId, userId)
-                .or().eq(HfTask::getReporterId, userId)
                 .or().eq(HfTask::getDeveloperId, userId)
                 .or().eq(HfTask::getTesterId, userId));
         applyCommonConditions(wrapper, condition);
@@ -149,6 +134,20 @@ public class HfTaskRepository extends BaseRepository<HfTaskMapper, HfTask> {
         if (condition.getCreatedAtEnd() != null) {
             wrapper.le(HfTask::getCreatedAt, condition.getCreatedAtEnd());
         }
+    }
+
+    /**
+     * 查询待当前用户审查的任务（状态为待审查，且当前用户不是任务的开发工程师，且任务属于当前用户参与的项目）
+     */
+    public Page<HfTask> selectPageByPendingReview(Page<HfTask> page, TaskCondition condition, List<Long> projectIds) {
+        LambdaQueryWrapper<HfTask> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(HfTask::getStatus, TaskStatusEnum.IN_REVIEW.getCode())
+                .ne(HfTask::getDeveloperId, condition.getAssigneeId())
+                .in(HfTask::getProjectId, projectIds);
+        applyCommonConditions(wrapper, condition);
+        applyDateConditions(wrapper, condition);
+        wrapper.orderByDesc(HfTask::getCreatedAt);
+        return hfTaskMapper.selectPage(page, wrapper);
     }
 
     public Integer selectMaxSeqByProjectId(Long projectId) {

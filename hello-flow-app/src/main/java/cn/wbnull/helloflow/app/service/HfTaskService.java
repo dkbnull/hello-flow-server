@@ -17,7 +17,7 @@ public interface HfTaskService {
     /**
      * 创建任务
      */
-    TaskVO createTask(Long projectId, TaskCreateRequest request);
+    TaskVO createTask(TaskCreateRequest request);
 
     /**
      * 更新任务
@@ -37,7 +37,7 @@ public interface HfTaskService {
     /**
      * 任务列表（支持多维度检索）
      */
-    Page<TaskVO> listTasks(TaskQuery query);
+    Page<TaskVO> listTasks(TaskCondition condition);
 
     /**
      * 分配任务
@@ -45,49 +45,9 @@ public interface HfTaskService {
     void assignTask(Long id, TaskAssignRequest request);
 
     /**
-     * 开始开发
+     * 任务状态流转
      */
-    void startTask(Long id);
-
-    /**
-     * 开发完成
-     */
-    void completeDev(Long id);
-
-    /**
-     * 审查通过
-     */
-    void reviewPass(Long id);
-
-    /**
-     * 审查不通过
-     */
-    void reviewReject(Long id);
-
-    /**
-     * 测试通过
-     */
-    void testPass(Long id);
-
-    /**
-     * 测试不通过
-     */
-    void testReject(Long id);
-
-    /**
-     * 重新打开
-     */
-    void reopenTask(Long id);
-
-    /**
-     * 关闭任务
-     */
-    void closeTask(Long id);
-
-    /**
-     * 取消任务
-     */
-    void cancelTask(Long id, TaskCancelRequest request);
+    void transitionTask(Long id, TaskTransitionRequest request);
 
     /**
      * 标记延期
@@ -120,17 +80,12 @@ public interface HfTaskService {
     void removeRelation(Long relationId);
 
     /**
-     * 获取我的任务
+     * 获取我负责的任务（负责人/开发工程师/测试工程师任一匹配）
      */
     Page<TaskVO> listMyTasks(TaskCondition condition);
 
     /**
-     * 获取我创建的任务
+     * 获取待我审查的任务（状态为待审查，且我不是开发工程师，且任务属于我参与的项目）
      */
-    Page<TaskVO> listReportedTasks(TaskCondition condition);
-
-    /**
-     * 获取与我相关的任务（负责人/创建人/开发工程师/测试工程师）
-     */
-    Page<TaskVO> listRelatedTasks(TaskCondition condition);
+    Page<TaskVO> listPendingReviewTasks(TaskCondition condition);
 }

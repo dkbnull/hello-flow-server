@@ -34,7 +34,8 @@ public class HfSprintServiceImpl implements HfSprintService {
     private final HfProjectService hfProjectService;
 
     @Override
-    public SprintVO createSprint(Long projectId, SprintCreateRequest request) {
+    public SprintVO createSprint(SprintCreateRequest request) {
+        Long projectId = request.getProjectId();
         hfProjectService.validateNotArchived(projectId);
         Long userId = SecurityUtils.getCurrentUserId();
         HfSprint sprint = new HfSprint();

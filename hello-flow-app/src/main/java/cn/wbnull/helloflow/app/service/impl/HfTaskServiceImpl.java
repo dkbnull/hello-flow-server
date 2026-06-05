@@ -25,7 +25,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.*;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -53,7 +52,8 @@ public class HfTaskServiceImpl implements HfTaskService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public TaskVO createTask(Long projectId, TaskCreateRequest request) {
+    public TaskVO createTask(TaskCreateRequest request) {
+        Long projectId = request.getProjectId();
         Long userId = SecurityUtils.getCurrentUserId();
         HfProject project = hfProjectRepository.selectById(projectId);
         if (project == null) {
@@ -184,11 +184,9 @@ public class HfTaskServiceImpl implements HfTaskService {
     }
 
     @Override
-    public Page<TaskVO> listTasks(TaskQuery query) {
-        TaskCondition condition = new TaskCondition();
-        BeanCopyUtils.copyNonNullProperties(query, condition);
+    public Page<TaskVO> listTasks(TaskCondition condition) {
         Page<HfTask> pageResult = hfTaskRepository.selectPageByCondition(
-                new Page<>(query.getPage(), query.getPageSize()), condition);
+                new Page<>(condition.getPage(), condition.getPageSize()), condition);
         return PageUtils.convertPage(pageResult, this::toTaskVO);
     }
 
@@ -215,33 +213,108 @@ public class HfTaskServiceImpl implements HfTaskService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void startTask(Long id) {
-        validateNotArchivedByTaskId(id);
-        transitionTask(id, TaskStatusEnum.TODO, TaskStatusEnum.IN_PROGRESS, TaskActionEnum.STATUS_CHANGE,
-                task -> task.setActualStartDate(LocalDate.now()),
-                (task, userId) -> log.info("开始开发：taskId={}", id));
+    public void transitionTask(Long id, TaskTransitionRequest request) {
+        TaskStatusEnum targetStatus = TaskStatusEnum.fromCode(request.getTargetStatus());
+        switch (targetStatus) {
+            case IN_PROGRESS:
+                handleStartOrReject(id, request);
+                break;
+            case IN_REVIEW:
+                handleCompleteDev(id);
+                break;
+            case IN_TEST:
+                handleReviewPass(id);
+                break;
+            case DONE:
+                handleTestPass(id);
+                break;
+            case TODO:
+                handleReopen(id);
+                break;
+            case CLOSED:
+                handleClose(id);
+                break;
+            case CANCELLED:
+                handleCancel(id, request);
+                break;
+            default:
+                throw new BusinessException(ResultCode.TASK_STATUS_TRANSITION_INVALID);
+        }
     }
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void completeDev(Long id) {
-        validateNotArchivedByTaskId(id);
-        transitionTask(id, TaskStatusEnum.IN_PROGRESS, TaskStatusEnum.IN_REVIEW, TaskActionEnum.STATUS_CHANGE,
-                null,
-                (task, userId) -> {
-                    HfProject project = hfProjectRepository.selectById(task.getProjectId());
-                    if (project != null && project.getDevLeadId() != null) {
-                        notificationService.sendNotification(project.getDevLeadId(), "任务待审查",
-                                "任务「" + task.getTitle() + "」开发完成，等待审查",
-                                NotificationTypeEnum.STATUS_CHANGE.getCode(), task.getId());
-                    }
-                    log.info("开发完成：taskId={}", id);
-                });
+    private void handleStartOrReject(Long id, TaskTransitionRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        HfTask task = getTaskOrThrow(id);
+        hfProjectService.validateNotArchived(task.getProjectId());
+        // 从"未开始"→"进行中"为开始开发
+        if (TaskStatusEnum.TODO.matches(task.getStatus())) {
+            Integer oldStatus = task.getStatus();
+            task.setStatus(TaskStatusEnum.IN_PROGRESS.getCode());
+            task.setActualStartDate(LocalDate.now());
+            hfTaskRepository.updateById(task);
+            recordStatusHistory(id, userId, oldStatus, TaskStatusEnum.IN_PROGRESS, TaskActionEnum.STATUS_CHANGE);
+            log.info("开始开发：taskId={}", id);
+            return;
+        }
+        // 从"待审查"→"进行中"为审查不通过
+        if (TaskStatusEnum.IN_REVIEW.matches(task.getStatus())) {
+            validateReviewPermission(task, userId);
+            Integer oldStatus = task.getStatus();
+            task.setStatus(TaskStatusEnum.IN_PROGRESS.getCode());
+            task.setAssigneeId(task.getDeveloperId());
+            hfTaskRepository.updateById(task);
+            recordStatusHistory(id, userId, oldStatus, TaskStatusEnum.IN_PROGRESS, TaskActionEnum.STATUS_CHANGE);
+            if (task.getDeveloperId() != null) {
+                notificationService.sendNotification(task.getDeveloperId(), "任务审查不通过",
+                        "任务「" + task.getTitle() + "」审查不通过，请修改",
+                        NotificationTypeEnum.STATUS_CHANGE.getCode(), task.getId());
+            }
+            log.info("审查不通过：taskId={}", id);
+            return;
+        }
+        // 从"待测试"→"进行中"为测试不通过
+        if (TaskStatusEnum.IN_TEST.matches(task.getStatus())) {
+            Integer oldStatus = task.getStatus();
+            task.setStatus(TaskStatusEnum.IN_PROGRESS.getCode());
+            task.setAssigneeId(task.getDeveloperId());
+            hfTaskRepository.updateById(task);
+            recordStatusHistory(id, userId, oldStatus, TaskStatusEnum.IN_PROGRESS, TaskActionEnum.TEST_REJECT);
+            if (task.getDeveloperId() != null) {
+                notificationService.sendNotification(task.getDeveloperId(), "任务测试不通过",
+                        "任务「" + task.getTitle() + "」测试不通过，请修改",
+                        NotificationTypeEnum.STATUS_CHANGE.getCode(), task.getId());
+            }
+            log.info("测试不通过：taskId={}", id);
+            return;
+        }
+        throw new BusinessException(ResultCode.TASK_STATUS_TRANSITION_INVALID);
     }
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void reviewPass(Long id) {
+    private void handleCompleteDev(Long id) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        HfTask task = getTaskOrThrow(id);
+        hfProjectService.validateNotArchived(task.getProjectId());
+        if (!TaskStatusEnum.IN_PROGRESS.matches(task.getStatus())) {
+            throw new BusinessException(ResultCode.TASK_STATUS_TRANSITION_INVALID);
+        }
+        Integer oldStatus = task.getStatus();
+        task.setStatus(TaskStatusEnum.IN_REVIEW.getCode());
+        // 进入待审查时，将负责人设置为项目开发主责（审查人）
+        HfProject project = hfProjectRepository.selectById(task.getProjectId());
+        if (project != null && project.getDevLeadId() != null) {
+            task.setAssigneeId(project.getDevLeadId());
+        }
+        hfTaskRepository.updateById(task);
+        recordStatusHistory(id, userId, oldStatus, TaskStatusEnum.IN_REVIEW, TaskActionEnum.STATUS_CHANGE);
+        if (project != null && project.getDevLeadId() != null) {
+            notificationService.sendNotification(project.getDevLeadId(), "任务待审查",
+                    "任务「" + task.getTitle() + "」开发完成，等待审查",
+                    NotificationTypeEnum.STATUS_CHANGE.getCode(), task.getId());
+        }
+        log.info("开发完成：taskId={}", id);
+    }
+
+    private void handleReviewPass(Long id) {
         Long userId = SecurityUtils.getCurrentUserId();
         HfTask task = getTaskOrThrow(id);
         hfProjectService.validateNotArchived(task.getProjectId());
@@ -270,33 +343,7 @@ public class HfTaskServiceImpl implements HfTaskService {
         log.info("审查通过：taskId={}", id);
     }
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void reviewReject(Long id) {
-        Long userId = SecurityUtils.getCurrentUserId();
-        HfTask task = getTaskOrThrow(id);
-        hfProjectService.validateNotArchived(task.getProjectId());
-        if (!TaskStatusEnum.IN_REVIEW.matches(task.getStatus())) {
-            throw new BusinessException(ResultCode.TASK_STATUS_TRANSITION_INVALID);
-        }
-        validateReviewPermission(task, userId);
-        Integer oldStatus = task.getStatus();
-        task.setStatus(TaskStatusEnum.IN_PROGRESS.getCode());
-        task.setAssigneeId(task.getDeveloperId());
-        hfTaskRepository.updateById(task);
-        recordStatusHistory(id, userId, oldStatus, TaskStatusEnum.IN_PROGRESS, TaskActionEnum.STATUS_CHANGE);
-        // 通知开发工程师
-        if (task.getDeveloperId() != null) {
-            notificationService.sendNotification(task.getDeveloperId(), "任务审查不通过",
-                    "任务「" + task.getTitle() + "」审查不通过，请修改",
-                    NotificationTypeEnum.STATUS_CHANGE.getCode(), task.getId());
-        }
-        log.info("审查不通过：taskId={}", id);
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void testPass(Long id) {
+    private void handleTestPass(Long id) {
         Long userId = SecurityUtils.getCurrentUserId();
         HfTask task = getTaskOrThrow(id);
         hfProjectService.validateNotArchived(task.getProjectId());
@@ -308,9 +355,7 @@ public class HfTaskServiceImpl implements HfTaskService {
         task.setActualEndDate(LocalDate.now());
         hfTaskRepository.updateById(task);
         recordStatusHistory(id, userId, oldStatus, TaskStatusEnum.DONE, TaskActionEnum.STATUS_CHANGE);
-        // 检查父任务状态
         checkParentTaskStatus(task.getParentId());
-        // 通知创建者
         if (task.getReporterId() != null) {
             notificationService.sendNotification(task.getReporterId(), "任务已完成",
                     "任务「" + task.getTitle() + "」测试通过，已完成",
@@ -319,25 +364,7 @@ public class HfTaskServiceImpl implements HfTaskService {
         log.info("测试通过：taskId={}", id);
     }
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void testReject(Long id) {
-        validateNotArchivedByTaskId(id);
-        transitionTask(id, TaskStatusEnum.IN_TEST, TaskStatusEnum.IN_PROGRESS, TaskActionEnum.TEST_REJECT,
-                task -> task.setAssigneeId(task.getDeveloperId()),
-                (task, userId) -> {
-                    if (task.getDeveloperId() != null) {
-                        notificationService.sendNotification(task.getDeveloperId(), "任务测试不通过",
-                                "任务「" + task.getTitle() + "」测试不通过，请修改",
-                                NotificationTypeEnum.STATUS_CHANGE.getCode(), task.getId());
-                    }
-                    log.info("测试不通过：taskId={}", id);
-                });
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void reopenTask(Long id) {
+    private void handleReopen(Long id) {
         Long userId = SecurityUtils.getCurrentUserId();
         HfTask task = getTaskOrThrow(id);
         hfProjectService.validateNotArchived(task.getProjectId());
@@ -359,18 +386,22 @@ public class HfTaskServiceImpl implements HfTaskService {
         log.info("重新打开任务：taskId={}", id);
     }
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void closeTask(Long id) {
-        validateNotArchivedByTaskId(id);
-        transitionTask(id, TaskStatusEnum.DONE, TaskStatusEnum.CLOSED, TaskActionEnum.CLOSE,
-                task -> task.setCloseDate(java.time.LocalDateTime.now()),
-                (task, userId) -> log.info("关闭任务：taskId={}", id));
+    private void handleClose(Long id) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        HfTask task = getTaskOrThrow(id);
+        hfProjectService.validateNotArchived(task.getProjectId());
+        if (!TaskStatusEnum.DONE.matches(task.getStatus())) {
+            throw new BusinessException(ResultCode.TASK_STATUS_TRANSITION_INVALID);
+        }
+        Integer oldStatus = task.getStatus();
+        task.setStatus(TaskStatusEnum.CLOSED.getCode());
+        task.setCloseDate(java.time.LocalDateTime.now());
+        hfTaskRepository.updateById(task);
+        recordStatusHistory(id, userId, oldStatus, TaskStatusEnum.CLOSED, TaskActionEnum.CLOSE);
+        log.info("关闭任务：taskId={}", id);
     }
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void cancelTask(Long id, TaskCancelRequest request) {
+    private void handleCancel(Long id, TaskTransitionRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
         HfTask task = getTaskOrThrow(id);
         hfProjectService.validateNotArchived(task.getProjectId());
@@ -417,7 +448,8 @@ public class HfTaskServiceImpl implements HfTaskService {
             throw new BusinessException(ResultCode.TASK_NOT_FOUND);
         }
         request.setParentId(parentId);
-        return createTask(parent.getProjectId(), request);
+        request.setProjectId(parent.getProjectId());
+        return createTask(request);
     }
 
     @Override
@@ -492,19 +524,32 @@ public class HfTaskServiceImpl implements HfTaskService {
 
     @Override
     public Page<TaskVO> listMyTasks(TaskCondition condition) {
-        Page<HfTask> pageResult = hfTaskRepository.selectPageByAssigneeId(new Page<>(condition.getPage(), condition.getPageSize()), condition);
+        Page<HfTask> pageResult = hfTaskRepository.selectPageByMine(new Page<>(condition.getPage(), condition.getPageSize()), condition);
         return PageUtils.convertPage(pageResult, this::toTaskVO);
     }
 
     @Override
-    public Page<TaskVO> listReportedTasks(TaskCondition condition) {
-        Page<HfTask> pageResult = hfTaskRepository.selectPageByReporterId(new Page<>(condition.getPage(), condition.getPageSize()), condition);
-        return PageUtils.convertPage(pageResult, this::toTaskVO);
-    }
-
-    @Override
-    public Page<TaskVO> listRelatedTasks(TaskCondition condition) {
-        Page<HfTask> pageResult = hfTaskRepository.selectPageByRelatedUserId(new Page<>(condition.getPage(), condition.getPageSize()), condition);
+    public Page<TaskVO> listPendingReviewTasks(TaskCondition condition) {
+        Long userId = condition.getAssigneeId();
+        // 只有开发工程师可以审查，其他角色返回空
+        SysUser user = sysUserRepository.selectById(userId);
+        if (user == null || user.getPositionId() == null) {
+            return new Page<>(condition.getPage(), condition.getPageSize());
+        }
+        HfPosition position = hfPositionRepository.selectById(user.getPositionId());
+        if (position == null || !"DEV".equals(position.getCode())) {
+            return new Page<>(condition.getPage(), condition.getPageSize());
+        }
+        // 查询当前用户参与的项目
+        List<HfProjectMember> members = hfProjectMemberRepository.selectByUserId(userId);
+        List<Long> projectIds = members.stream()
+                .map(HfProjectMember::getProjectId)
+                .collect(Collectors.toList());
+        if (projectIds.isEmpty()) {
+            return new Page<>(condition.getPage(), condition.getPageSize());
+        }
+        Page<HfTask> pageResult = hfTaskRepository.selectPageByPendingReview(
+                new Page<>(condition.getPage(), condition.getPageSize()), condition, projectIds);
         return PageUtils.convertPage(pageResult, this::toTaskVO);
     }
 
@@ -606,36 +651,6 @@ public class HfTaskServiceImpl implements HfTaskService {
             throw new BusinessException(ResultCode.TASK_NOT_FOUND);
         }
         return task;
-    }
-
-    /**
-     * 任务状态流转模板方法
-     *
-     * @param id             任务ID
-     * @param requiredStatus 要求的当前状态
-     * @param targetStatus   目标状态
-     * @param action         操作类型
-     * @param extraModifier  额外修改（可为null）
-     * @param postHandler    流转后处理（可为null）
-     */
-    private void transitionTask(Long id, TaskStatusEnum requiredStatus, TaskStatusEnum targetStatus,
-                                TaskActionEnum action, Consumer<HfTask> extraModifier,
-                                java.util.function.BiConsumer<HfTask, Long> postHandler) {
-        Long userId = SecurityUtils.getCurrentUserId();
-        HfTask task = getTaskOrThrow(id);
-        if (!requiredStatus.matches(task.getStatus())) {
-            throw new BusinessException(ResultCode.TASK_STATUS_TRANSITION_INVALID);
-        }
-        Integer oldStatus = task.getStatus();
-        task.setStatus(targetStatus.getCode());
-        if (extraModifier != null) {
-            extraModifier.accept(task);
-        }
-        hfTaskRepository.updateById(task);
-        recordStatusHistory(id, userId, oldStatus, targetStatus, action);
-        if (postHandler != null) {
-            postHandler.accept(task, userId);
-        }
     }
 
     /**

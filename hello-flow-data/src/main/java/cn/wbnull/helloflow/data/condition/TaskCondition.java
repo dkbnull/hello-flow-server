@@ -42,5 +42,5 @@ public class TaskCondition {
 
     private Integer page = 1;
 
-    private Integer pageSize = 20;
+    private Integer pageSize = 10;
 }

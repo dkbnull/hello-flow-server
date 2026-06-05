@@ -30,7 +30,7 @@ public class DictController {
     public Result<Page<DictTypeVO>> listDictTypes(
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "1") Integer page,
-            @RequestParam(defaultValue = "20") Integer pageSize) {
+            @RequestParam(defaultValue = "10") Integer pageSize) {
         return Result.success(sysDictService.listDictTypes(keyword, page, pageSize));
     }
 
@@ -53,7 +53,7 @@ public class DictController {
     public Result<Page<DictDataVO>> listDictData(
             @PathVariable Long typeId,
             @RequestParam(defaultValue = "1") Integer page,
-            @RequestParam(defaultValue = "20") Integer pageSize) {
+            @RequestParam(defaultValue = "10") Integer pageSize) {
         return Result.success(sysDictService.listDictData(typeId, page, pageSize));
     }
 
